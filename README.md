@@ -23,10 +23,11 @@
 </p>
 
 - **Your documents, searchable on your computer.** Choose the Disk folders that matter. Their text is copied into
-  WireCat's local store, and one search finds it by words, by word forms and by meaning.
+  WireCat's local store, and one search finds it by words and word forms, and by meaning once indexed.
 - **The whole Disk, live.** List, read, download, upload, copy, move, delete to the trash, restore and share files
   without opening a browser.
-- **Safe to give to an agent.** Deleting and public links ask first, and one setting turns either off for an agent.
+- **Safe to give to an agent.** Deleting and public links ask first at a terminal, and one setting turns either off
+  for an agent.
 
 ## What you get
 
