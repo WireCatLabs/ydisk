@@ -5,7 +5,7 @@ import { apiFlagOf, manifestBaseUrl } from "@wirecat/cli-core/cli"
 import { afterEach, expect, it } from "vitest"
 import { API } from "./config.js"
 import { definitions } from "./generated/definitions.js"
-import { FAKE_TOKEN } from "./testing/fake-comments.js"
+import { FAKE_TOKEN } from "./testing/fake-disk.js"
 import { runCli } from "./testing/harness.js"
 
 const configFile = join(process.env.YDISK_CONFIG_DIR ?? "", "config.json")
