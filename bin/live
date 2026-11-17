@@ -7,8 +7,8 @@
 //   bin/live <keyring account> [arguments for scripts/live.sh, such as the test page's link]
 //
 // Linux only: it reads the keyring with secret-tool and runs scripts/live.sh with bash.
-// The token is the keyring entry `service yandex-disk-cli-live account <keyring account>`, stored once with
-//   secret-tool store --label="ydisk live check" service yandex-disk-cli-live account <keyring account>
+// The token is the keyring entry `service ydisk account <keyring account>`, stored once with
+//   secret-tool store --label="ydisk live check" service ydisk account <keyring account>
 // It stays in this process and reaches scripts/live.sh on stdin only: never an argument, the environment or the
 // screen. A version whose shipped code already has a record is not checked again.
 import { execFileSync, spawnSync } from "node:child_process"
@@ -21,7 +21,7 @@ const PACKAGE_JSON = join(ROOT, "package.json")
 const LIVE_CHECK = join(ROOT, "scripts/live.sh")
 const RECORDS = join(ROOT, "docs/dev/live-checks.txt")
 const KIT = join(ROOT, "kit")
-const KEYRING_SERVICE = "yandex-disk-cli-live"
+const KEYRING_SERVICE = "ydisk"
 
 const fail = (message) => {
   process.stderr.write(`live: ${message}\n`)
