@@ -10,7 +10,7 @@ export const IDENTITY: AppIdentity = {
   envPrefix: "YDISK",
   description: "Yandex Disk for your AI agents: chosen folders as searchable text, and the files live",
   version: VERSION,
-  issues: "https://github.com/WireCatLabs/ydisk/issues/new",
+  issues: "https://github.com/WireCatLabs/ydisk-cli/issues/new",
   messenger: false,
   contentLanguages: ["ru", "en"],
 }
@@ -19,7 +19,7 @@ export const IDENTITY: AppIdentity = {
 // else loads; src/wcat.ts adds the permission keys.
 export const DESKTOP: ManifestIdentity = {
   ...IDENTITY,
-  docs: "https://github.com/WireCatLabs/ydisk#readme",
+  docs: "https://github.com/WireCatLabs/ydisk-cli#readme",
   // Every host the CLI contacts (WC-CMD-32). The API is cloud-api.yandex.net; its download and upload links point at
   // downloader.disk.yandex.ru and *.disk.yandex.net (https://yandex.ru/dev/disk-api/doc/en/reference/content, …/upload);
   // the first live check (2026-11-17) got a link on mds.storage.yandex.net, which the docs do not name.

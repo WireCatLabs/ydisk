@@ -1,12 +1,12 @@
 {
   "name": "@wirecat/yandex-disk-cli",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Yandex Disk for your AI agents: search the folders you choose, and work with the files live",
   "license": "Apache-2.0",
   "author": "Viacheslav Ptsarev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/WireCatLabs/ydisk.git"
+    "url": "git+https://github.com/WireCatLabs/ydisk-cli.git"
   },
   "type": "module",
   "engines": {

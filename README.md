@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/WireCatLabs/ydisk/main/docs/images/social-preview.png" alt="Yandex Disk for your AI agents: search the folders you choose, and work with the files live" width="100%">
+  <img src="https://raw.githubusercontent.com/WireCatLabs/ydisk-cli/main/docs/images/social-preview.png" alt="Yandex Disk for your AI agents: search the folders you choose, and work with the files live" width="100%">
 </p>
 
 # ydisk: Yandex Disk CLI for AI agents
@@ -10,16 +10,16 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/WireCatLabs/ydisk/blob/main/docs/index.md">Docs</a> ·
-  <a href="https://github.com/WireCatLabs/ydisk/blob/main/docs/usage.md">Usage</a> ·
-  <a href="https://discord.gg/DebENqbRrJ">Discord</a>
+  <a href="https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/index.md">Docs</a> ·
+  <a href="https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/installation.md">Install</a> ·
+  <a href="https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/usage.md">Usage</a>
 </p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@wirecat/yandex-disk-cli"><img src="https://img.shields.io/npm/v/@wirecat/yandex-disk-cli" alt="npm"></a>
-  <a href="https://github.com/WireCatLabs/ydisk/actions/workflows/main.yml"><img src="https://github.com/WireCatLabs/ydisk/actions/workflows/main.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/WireCatLabs/ydisk-cli/actions/workflows/main.yml"><img src="https://github.com/WireCatLabs/ydisk-cli/actions/workflows/main.yml/badge.svg" alt="CI"></a>
   <a href="https://www.npmjs.com/package/@wirecat/yandex-disk-cli"><img src="https://img.shields.io/npm/dm/@wirecat/yandex-disk-cli" alt="npm downloads"></a>
-  <a href="https://github.com/WireCatLabs/ydisk/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License: Apache 2.0"></a>
+  <a href="https://github.com/WireCatLabs/ydisk-cli/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License: Apache 2.0"></a>
 </p>
 
 - **Your documents, searchable on your computer.** Choose the Disk folders that matter. Their text is copied into
@@ -101,7 +101,7 @@ Yandex says a token lasts several months and is extended while it is used
 ([Yandex ID](https://yandex.ru/dev/id/doc/en/concepts/ya-oauth-intro)). When Yandex stops accepting it, sign in
 again.
 
-More: [installation](https://github.com/WireCatLabs/ydisk/blob/main/docs/installation.md)
+More: [installation](https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/installation.md)
 
 ## Use it with your agent
 
@@ -122,7 +122,7 @@ ydisk personal mcp add claude-code --allow-writes  # or: codex
 ydisk personal mcp config                          # the entry for Claude Desktop, Cursor and others
 ```
 
-More: [agents and MCP](https://github.com/WireCatLabs/ydisk/blob/main/docs/usage.md#agents)
+More: [agents and MCP](https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/usage.md#agents)
 
 ## What it can do
 
@@ -162,7 +162,7 @@ ydisk personal files unpublish /Documents/plan.pdf
 public links and the Disk's own operations that run in the background. `ydisk personal api show resources-list` shows
 an operation's parameters without calling Yandex.
 
-More: [commands](https://github.com/WireCatLabs/ydisk/blob/main/docs/commands.md)
+More: [commands](https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/commands.md)
 
 ### With your other sources
 
@@ -197,7 +197,7 @@ ydisk personal mcp serve --permission files.share=deny   # stricter for this ser
 
 `YDISK_READ_ONLY=1` refuses every change.
 
-More: [settings](https://github.com/WireCatLabs/ydisk/blob/main/docs/configuration.md#permissions)
+More: [settings](https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/configuration.md#permissions)
 
 ## Security
 
@@ -205,8 +205,8 @@ The token is in the system keyring, and no command takes it as an argument. It g
 a link, the output or a log. Over MCP an agent reads a file's text but cannot save a file to a path, and an upload
 refuses credential files and the WireCat folders unless you allow it.
 
-More: [security](https://github.com/WireCatLabs/ydisk/blob/main/docs/security.md) · Report a vulnerability:
-[SECURITY.md](https://github.com/WireCatLabs/ydisk/blob/main/SECURITY.md)
+More: [security](https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/security.md) · Report a vulnerability:
+[SECURITY.md](https://github.com/WireCatLabs/ydisk-cli/blob/main/SECURITY.md)
 
 ## When something goes wrong
 
@@ -215,12 +215,12 @@ ydisk doctor                            # what is set up, without connecting
 ydisk personal doctor --online          # check that the token works
 ```
 
-More: [troubleshooting](https://github.com/WireCatLabs/ydisk/blob/main/docs/troubleshooting.md) · Ask on
-[Discord](https://discord.gg/DebENqbRrJ) · Bugs go to this repository's issues.
+More: [troubleshooting](https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/troubleshooting.md) · Bugs go to
+[this repository's issues](https://github.com/WireCatLabs/ydisk-cli/issues).
 
 ## Documentation
 
-Every page is in [docs/](https://github.com/WireCatLabs/ydisk/blob/main/docs/index.md).
+Every page is in [docs/](https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/index.md).
 
 ## Development
 
@@ -228,11 +228,11 @@ Every page is in [docs/](https://github.com/WireCatLabs/ydisk/blob/main/docs/ind
 pnpm install && pnpm test
 ```
 
-More: [design](https://github.com/WireCatLabs/ydisk/blob/main/docs/dev/DESIGN.md) ·
-[testing](https://github.com/WireCatLabs/ydisk/blob/main/docs/dev/TESTING.md) · `pnpm docs:images` renders the banner
-from [docs/images/src/banner.html](https://github.com/WireCatLabs/ydisk/blob/main/docs/images/src/banner.html).
+More: [design](https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/dev/DESIGN.md) ·
+[testing](https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/dev/TESTING.md) · `pnpm docs:images` renders the banner
+from [docs/images/src/banner.html](https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/images/src/banner.html).
 
-Pull requests, bug reports and ideas go to [issues](https://github.com/WireCatLabs/ydisk/issues).
+Pull requests, bug reports and ideas go to [issues](https://github.com/WireCatLabs/ydisk-cli/issues).
 
 ## Part of WireCat
 
@@ -241,4 +241,4 @@ agents your context from messengers, mail, calendars and documents. Each one wor
 
 ## License
 
-[Apache 2.0](https://github.com/WireCatLabs/ydisk/blob/main/LICENSE)
+[Apache 2.0](https://github.com/WireCatLabs/ydisk-cli/blob/main/LICENSE)

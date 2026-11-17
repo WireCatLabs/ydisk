@@ -2,7 +2,7 @@
   "wcat_manifest": 2,
   "name": "ydisk",
   "description": "Yandex Disk for your AI agents: chosen folders as searchable text, and the files live",
-  "docs_url": "https://github.com/WireCatLabs/ydisk#readme",
+  "docs_url": "https://github.com/WireCatLabs/ydisk-cli#readme",
   "package": "@wirecat/yandex-disk-cli",
   "bin": "wcat-ydisk",
   "commands": [
