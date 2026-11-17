@@ -6,7 +6,7 @@
   "author": "Viacheslav Ptsarev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/WireCatLabs/yandex-disk-cli.git"
+    "url": "git+https://github.com/WireCatLabs/ydisk.git"
   },
   "type": "module",
   "engines": {

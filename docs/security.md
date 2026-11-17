@@ -29,5 +29,5 @@ format or after a secret name.
 
 `config.json` is saved readable by you only (`0600`), and its folder is created for you only (`0700`). A file or
 folder made by an older version may be open to other users of the computer: `ydisk doctor` lists each under
-`files.problems` and prints the `chmod` that fixes it. Windows is not checked. Report a vulnerability as [SECURITY.md](https://github.com/WireCatLabs/yandex-disk-cli/blob/main/SECURITY.md)
+`files.problems` and prints the `chmod` that fixes it. Windows is not checked. Report a vulnerability as [SECURITY.md](https://github.com/WireCatLabs/ydisk/blob/main/SECURITY.md)
 says.

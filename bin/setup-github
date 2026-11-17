@@ -15,7 +15,7 @@ import { createInterface } from "node:readline/promises"
 const ROOT = resolve(import.meta.dirname, "..")
 const PACKAGE_JSON = join(ROOT, "package.json")
 const KIT = join(ROOT, "kit")
-const REPO = "WireCatLabs/yandex-disk-cli"
+const REPO = "WireCatLabs/ydisk"
 
 // What cli-dev repo-check requires (cli-base REQUIRED_CHECKS, and conformance from release-pr.yml); a kit test keeps
 // this list equal to cli-base's.

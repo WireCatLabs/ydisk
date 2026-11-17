@@ -2,7 +2,7 @@
   "wcat_manifest": 2,
   "name": "ydisk",
   "description": "a new WireCat CLI, started from cli-template",
-  "docs_url": "https://github.com/WireCatLabs/yandex-disk-cli#readme",
+  "docs_url": "https://github.com/WireCatLabs/ydisk#readme",
   "package": "@wirecat/yandex-disk-cli",
   "bin": "wcat-ydisk",
   "commands": [

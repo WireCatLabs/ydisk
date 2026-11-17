@@ -10,7 +10,7 @@ export const IDENTITY: AppIdentity = {
   envPrefix: "YDISK",
   description: "a new WireCat CLI, started from cli-template",
   version: VERSION,
-  issues: "https://github.com/WireCatLabs/yandex-disk-cli/issues/new",
+  issues: "https://github.com/WireCatLabs/ydisk/issues/new",
   messenger: false,
   contentLanguages: ["ru", "en"],
 }
@@ -19,7 +19,7 @@ export const IDENTITY: AppIdentity = {
 // yours. The bin passes it to wcatStart before anything else loads; src/wcat.ts adds the permission keys.
 export const DESKTOP: ManifestIdentity = {
   ...IDENTITY,
-  docs: "https://github.com/WireCatLabs/yandex-disk-cli#readme",
+  docs: "https://github.com/WireCatLabs/ydisk#readme",
   // SAMPLE: every host the CLI contacts (WC-CMD-32); src/sample/transport.ts reaches only these.
   hosts: ["comments.example.invalid"],
   tagline: "A new WireCat CLI, started from cli-template",
