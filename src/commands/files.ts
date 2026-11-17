@@ -101,12 +101,17 @@ const listCommand = () =>
     })
       .description("list what a Disk folder holds, live, a page at a time")
       .option("--folder <folder>", "the Disk folder to list, by its path; the top of the Disk without it")
-      .option("--cursor <cursor>", "go on from where the last page stopped; page.next gives it, with the same --folder")
+      .option(
+        "--cursor <cursor>",
+        "go on from where the last page stopped; page.next_cursor gives it, with the same --folder",
+      )
       .action(async function (this: Command, args: { folder?: string; cursor?: string }) {
         const path = diskPath(args.folder ?? "/")
         const offset = args.cursor === undefined ? 0 : Number(args.cursor)
         if (!Number.isSafeInteger(offset) || offset < 0)
-          throw new CliError("validation_error", "--cursor takes the value page.next gave", { param: "--cursor" })
+          throw new CliError("validation_error", "--cursor takes the value page.next_cursor gave", {
+            param: "--cursor",
+          })
         const page = await read(this, (disk) => disk.page(path, offset))
         renderAnswer(
           this,

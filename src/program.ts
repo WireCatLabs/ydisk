@@ -1,5 +1,6 @@
 import { join } from "node:path"
 import { resolvePaths } from "@wirecat/cli-base"
+import { annotate } from "@wirecat/cli-base/commands"
 import {
   appDoctorCommand,
   appMcpCommand,
@@ -13,11 +14,13 @@ import {
   type RunOptions,
   run as runShared,
   runsCommand,
+  sharedStoreCommand,
   skillCommand,
   upgradeCommand,
 } from "@wirecat/cli-core/cli"
 import { appUpdate } from "@wirecat/cli-core/update"
 import type { Command } from "commander"
+import { accountCommand } from "./commands/account.js"
 import { apiCommand } from "./commands/api.js"
 import { filesCommand } from "./commands/files.js"
 import { libraryCommands } from "./commands/library.js"
@@ -37,6 +40,12 @@ const update = appUpdate({
   enabled: (env) => configuration.resolveSettings({}, { env, needsProfile: false }).updateCheck,
   offVariables: [`${IDENTITY.envPrefix}_NO_UPDATE_CHECK`],
 })
+
+const storeCommand = () => {
+  const store = sharedStoreCommand()
+  for (const info of store.commands) annotate(info, { examples: [`${IDENTITY.command} store info --json`] })
+  return store
+}
 
 const mcpCommand = () =>
   appMcpCommand(IDENTITY, configuration, {
@@ -67,8 +76,10 @@ export const definition = (): ProgramDefinition => ({
   commands: () => [
     commandsCommand(IDENTITY),
     sessionCommand(),
+    accountCommand(),
     ...libraryCommands(),
     filesCommand(),
+    storeCommand(),
     apiCommand(),
     doctorCommand(),
     skillCommand(IDENTITY, SKILL),

@@ -73,6 +73,19 @@
     },
     {
       "path": [
+        "account",
+        "remove"
+      ],
+      "summary": "sign this profile out and forget it, keeping or deleting its data",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "account.remove",
+      "entity": "account_removal"
+    },
+    {
+      "path": [
         "folders",
         "add"
       ],
@@ -750,6 +763,19 @@
         "local": "write"
       },
       "permission": "files.unpublish"
+    },
+    {
+      "path": [
+        "store",
+        "info"
+      ],
+      "summary": "the shared store's format, size and contents, and whether this tool can read it",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "store.info",
+      "entity": "store_info"
     },
     {
       "path": [
