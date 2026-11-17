@@ -23,8 +23,8 @@ import { filesCommand } from "./commands/files.js"
 import { libraryCommands } from "./commands/library.js"
 import { sessionCommand } from "./commands/session.js"
 import { configuration } from "./config.js"
-import { IDENTITY, PACKAGE, SKILL } from "./identity.js"
-import { SERVICE } from "./yandex/transport.js"
+import { diskFor, tokenOf } from "./context.js"
+import { IDENTITY, PACKAGE, SERVICE, SKILL } from "./identity.js"
 
 const update = appUpdate({
   packageName: PACKAGE,
@@ -49,6 +49,17 @@ const mcpCommand = () =>
       new ProfileTokenStore({ app: IDENTITY, env, ...(keyring ? { keyring } : {}) }).signedIn(profile),
   })
 
+/** `doctor --online` asks the Disk whose token the profile holds, as `session status --check` does. */
+const doctorCommand = () => {
+  // cli-core hands `online` only the environment; the command carries the profile, the keyring and a test's fake.
+  // doctor already runs `--online` inside its own run, which `online` cannot reach, so no second run is opened here.
+  const doctor: Command = appDoctorCommand(IDENTITY, configuration, {
+    packageName: PACKAGE,
+    online: async () => ({ ok: true, user: await diskFor(doctor, undefined, tokenOf(doctor)).account() }),
+  })
+  return doctor
+}
+
 export const definition = (): ProgramDefinition => ({
   app: IDENTITY,
   // The whole object: cli-core refuses a command by its key only when it gets the permission table too.
@@ -59,7 +70,7 @@ export const definition = (): ProgramDefinition => ({
     ...libraryCommands(),
     filesCommand(),
     apiCommand(),
-    appDoctorCommand(IDENTITY, configuration, { packageName: PACKAGE }),
+    doctorCommand(),
     skillCommand(IDENTITY, SKILL),
     mcpCommand(),
     upgradeCommand(IDENTITY, PACKAGE, (command) => ({

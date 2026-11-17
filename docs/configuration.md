@@ -19,8 +19,7 @@ the permissions say.
 
 ## Run records
 
-A command that fails is kept as a run, for `ydisk runs list` and `runs show`. A command you add that does its work
-in `context.run` is kept when it succeeds too, unless `record` is `false` (then only failures) or it ran with
-`--no-record`. `comments` and `session status --check` do their work in a run, so `--record` keeps them. `record_input` decides whether a run
-keeps the words you typed; it is `true` unless you set it to `false`. Secrets are masked either way; see
-[Security](security.md).
+A command that fails is kept as a run, for `ydisk runs list` and `runs show`. A command that reaches Yandex Disk, such
+as `files list`, `sync` or `session status --check`, is kept when it succeeds too, unless `record` is `false` (then
+only failures) or it ran with `--no-record`. `record_input` decides whether a run keeps the words you typed; it is
+`true` unless you set it to `false`. Secrets are masked either way; see [Security](security.md).

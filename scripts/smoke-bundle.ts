@@ -51,7 +51,7 @@ check("the loader's --version is the bundle's", recorded.stdout === version.stdo
 check("--help names the command", run(["--help"]).stdout.includes(`Usage: ${COMMAND}`))
 check("skill show prints the SKILL.md the package ships", run(["skill", "show"]).stdout.startsWith("---"))
 check(
-  "doctor finds the document readers",
+  "doctor checks that the config files are private",
   run(["doctor", "--json"]).stdout.includes('"files":{"checked":true,"ok":true'),
 )
 rmSync(isolated, { recursive: true, force: true })

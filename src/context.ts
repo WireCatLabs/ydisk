@@ -11,16 +11,17 @@ import {
 import { Pacer, pacePathFor } from "@wirecat/cli-core/sends"
 import type { Command } from "commander"
 import { configuration } from "./config.js"
-import { API_HOSTS, DESKTOP, IDENTITY } from "./identity.js"
+import { API_HOSTS, DESKTOP, IDENTITY, SERVICE } from "./identity.js"
 import { diskSource } from "./yandex/source.js"
-import { SERVICE, transport } from "./yandex/transport.js"
+import { type Transport, transport } from "./yandex/transport.js"
+import { diskWrites } from "./yandex/writes.js"
 
 /** What a test hands `run()` beside cli-core's own: the fake service in place of the network (WC-ARCH-10). */
 export interface ServiceEnvironment extends BaseEnvironment {
   fetch?: typeof fetch
 }
 
-// Yandex documents no rate limit (yandex-disk.md §1.5); this pace stays well under what a person clicks.
+// Yandex's Disk API documentation names no rate limit; this pace stays well under what a person clicks.
 export const PACE = { perMinute: 120, burst: 20 }
 
 /**
@@ -53,10 +54,23 @@ export const LINK_HOSTS = (DESKTOP.hosts ?? []).filter((host) => !API_HOSTS.incl
 /** A file moves at the link's own pace; the run's --timeout and stop still end it. */
 const LINK_TIMEOUT_MS = 60 * 60_000
 
+/** The transport names no command (WC-ARCH-16); a refused token gets the words that sign this profile in again. */
+const signInAgain = (api: Transport, profile: string): Transport => ({
+  send: (request, answer) =>
+    api.send(request, answer).catch((error: unknown) => {
+      if (!(error instanceof CliError) || error.code !== "authentication_error") throw error
+      throw new CliError(
+        error.code,
+        `${error.message}; sign in again with ${IDENTITY.command} ${profile} session start`,
+        error.details,
+      )
+    }),
+})
+
 /** The Disk for one run, with the token it was given; `events` comes from `run()`, so each request is recorded. */
 export const diskFor = (command: Command, events: EventSink | undefined, token: string) => {
   const { environment, env, profile } = contextOf(command)
-  return diskSource(
+  const api = signInAgain(
     transport({
       token,
       ...(events ? { events } : {}),
@@ -64,13 +78,14 @@ export const diskFor = (command: Command, events: EventSink | undefined, token: 
       ...(environment.fetch ? { fetch: environment.fetch } : {}),
       pacer: new Pacer(pacePathFor(IDENTITY, profile, env), PACE),
     }),
-    linkFetch({
-      hosts: LINK_HOSTS,
-      timeoutMs: LINK_TIMEOUT_MS,
-      ...(environment.fetch ? { fetch: environment.fetch } : {}),
-    }),
-    environment.signal,
+    profile,
   )
+  const links = linkFetch({
+    hosts: LINK_HOSTS,
+    timeoutMs: LINK_TIMEOUT_MS,
+    ...(environment.fetch ? { fetch: environment.fetch } : {}),
+  })
+  return { ...diskSource(api, links, environment.signal), ...diskWrites(api, links, environment.signal) }
 }
 
 export type Disk = ReturnType<typeof diskFor>

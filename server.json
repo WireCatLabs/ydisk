@@ -5,7 +5,7 @@
   "description": "ydisk for agents over MCP. Set up a profile with the ydisk CLI first.",
   "websiteUrl": "https://wirecat.dev/en/docs/ydisk",
   "repository": {
-    "url": "https://github.com/WireCatLabs/ydisk",
+    "url": "https://github.com/WireCatLabs/ydisk-cli",
     "source": "github"
   },
   "version": "0.0.0",
@@ -30,7 +30,9 @@
         {
           "type": "named",
           "name": "--profiles",
-          "value": "all"
+          "description": "The profiles this server serves: one name, a comma-separated list such as work,personal, or all for every profile on this computer",
+          "isRequired": true,
+          "placeholder": "personal"
         }
       ]
     }

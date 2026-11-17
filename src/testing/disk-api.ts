@@ -34,6 +34,8 @@ export interface DiskApiOptions {
   downloadBody?: string
   /** Fields every resource in an answer also carries. */
   resourceExtra?: Record<string, unknown>
+  /** The read of a public link after a publish fails, as a dropped connection would. */
+  publicUrlFails?: boolean
 }
 
 /** The spec's strict fake with the answers these commands need; a download or upload host refuses the token. */
@@ -44,6 +46,7 @@ export const diskApi = ({
   uploadStatus = 201,
   downloadBody = "hello",
   resourceExtra = {},
+  publicUrlFails = false,
 }: DiskApiOptions = {}) => {
   const uploaded: Uint8Array[] = []
   const service = fakeApi({
@@ -103,6 +106,8 @@ export const diskApi = ({
     if (writes && hangWrites)
       return new Promise((_, reject) => init?.signal?.addEventListener("abort", () => reject(init.signal?.reason)))
     if (failWith) return new Response("{}", { status: failWith })
+    if (publicUrlFails && new URL(String(input)).searchParams.get("fields") === "public_url")
+      throw new TypeError("fetch failed")
     if (writes && lose) {
       lose = false
       throw new TypeError("fetch failed")

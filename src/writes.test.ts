@@ -149,3 +149,41 @@ it.each([
   expect(restored.code, restored.err).toBe(0)
   expect(service.calls[0]?.query).toMatchObject({ path: sent })
 })
+
+it.each([
+  [["publish", "/plan.txt"], { key: "files.share" }],
+  [["unpublish", "/plan.txt"], { key: "files.share" }],
+  [["upload", "./plan.txt"], { key: "files.delete", when: "with --replace" }],
+  [["copy", "/plan.txt", "--folder", "/Archive"], { key: "files.delete", when: "with --replace" }],
+  [["move", "/plan.txt", "--folder", "/Archive"], { key: "files.delete", when: "with --replace" }],
+])("--dry-run of files %s shows %o, the key its run also checks", async (argv, also) => {
+  const service = diskApi()
+  const preview = await runCli(["personal", "files", ...argv, "--dry-run", "--json"], { service })
+  expect(preview.code, preview.err).toBe(0)
+  expect(preview.json().item).toMatchObject({ permission: { also: [expect.objectContaining(also)] } })
+  expect(service.calls).toEqual([])
+})
+
+it("a token the service refuses says how to sign this profile in again", async () => {
+  withPermissions({})
+  const refused = await runCli(LIST, { service: diskApi({ failWith: 401 }) })
+  expect(refused.json()).toMatchObject({ error: { code: "authentication_error" } })
+  expect(JSON.stringify(refused.json())).toContain("ydisk personal session start")
+})
+
+it("a local file that changes while the owner is asked is refused before anything is sent", async () => {
+  const local = join(mkdtempSync(join(tmpdir(), "ydisk-writes-")), "notes.txt")
+  writeFileSync(local, "some notes")
+  withPermissions({ "files.upload": "ask" })
+  const service = diskApi()
+  const changed = await runCli(["personal", "files", "upload", local], {
+    service,
+    answer: () => {
+      writeFileSync(local, "some notes, and more written while the question waited")
+      return "y"
+    },
+  })
+  expect(changed.code).not.toBe(0)
+  expect(changed.err).toContain("nothing was sent")
+  expect(service.calls).toEqual([])
+})

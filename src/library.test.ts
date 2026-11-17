@@ -6,7 +6,7 @@ import { linkFetch } from "@wirecat/cli-core/cli"
 import { type FeedlessDocumentSource, syncDocuments } from "@wirecat/cli-core/documents"
 import { documentProfile } from "@wirecat/cli-core/documents/cli"
 import { documentCommandsContract, documentSourceContract } from "@wirecat/cli-core/documents/testing"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 import { libraryCommands } from "./commands/library.js"
 import { IDENTITY } from "./identity.js"
 import { createProgram } from "./program.js"
@@ -178,5 +178,35 @@ describe("the shared documents commands over Yandex Disk", () => {
 
   it("mounts the shared groups once", () => {
     expect(libraryCommands().map((command) => command.name())).toContain("folders")
+  })
+})
+
+describe("Disk times", () => {
+  const zone = process.env.TZ
+  afterEach(() => {
+    if (zone === undefined) delete process.env.TZ
+    else process.env.TZ = zone
+  })
+
+  // Yandex sends each time with an offset; the computer's zone must not change what is stored or answered (WC-TIME-6).
+  const timesIn = async (tz: string) => {
+    process.env.TZ = tz
+    const disk = tree()
+    const plan = disk.nodes.get("disk:/Work/plan.txt")
+    if (!plan) throw new Error("the tree has no plan.txt")
+    plan.modified = "2026-01-02T03:00:00+03:00"
+    const env = sandbox()
+    const run = (...argv: string[]) => runCli(["personal", ...argv, "--json"], { service: disk, env })
+    await run("folders", "add", "/Work")
+    expect((await run("sync")).code).toBe(0)
+    const listed = (await run("documents", "list")).json().items as { id: string; modified_at: string }[]
+    const shown = (await run("files", "show", "/Work/plan.txt")).json().item as { modified_at: string }
+    return { stored: listed.find((one) => one.id === plan.resource_id)?.modified_at, live: shown.modified_at }
+  }
+
+  it("are kept and answered in UTC, the same under any zone", async () => {
+    const utc = "2026-01-02T00:00:00.000Z"
+    expect(await timesIn("Asia/Vladivostok")).toEqual({ stored: utc, live: utc })
+    expect(await timesIn("America/Los_Angeles")).toEqual({ stored: utc, live: utc })
   })
 })

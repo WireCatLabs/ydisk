@@ -3,10 +3,9 @@ import { hostFetch, providerWaitMs, readJsonResponse, statusToCode } from "@wire
 import { type EventSink, providerRequest } from "@wirecat/cli-core/cli"
 import type { Pacer } from "@wirecat/cli-core/sends"
 import * as v from "valibot"
-import { API_HOSTS } from "../identity.js"
+import { API_HOSTS, SERVICE } from "../identity.js"
 
 export const SERVICE_URL = "https://cloud-api.yandex.net/v1/"
-export const SERVICE = "Yandex Disk"
 
 const TIMEOUT_MS = 30_000
 const LARGEST_ANSWER = 8 * 1024 * 1024
@@ -57,10 +56,7 @@ const urlOf = ({ path, ids = {}, query = {} }: Request) => {
  * `outcome_unknown` and never retryable (WC-OUT-20, WC-LIFE-9).
  */
 export const failureOf = (status: number, writes: boolean, retryAfterMs?: number): CliError => {
-  if (status === 401)
-    return new CliError("authentication_error", `${SERVICE} refused the token; sign in again with session start`, {
-      status,
-    })
+  if (status === 401) return new CliError("authentication_error", `${SERVICE} refused the token`, { status })
   if (status === 429)
     return new CliError("rate_limited", `${SERVICE} asked to slow down; retry the command later`, {
       status,
@@ -108,7 +104,7 @@ export const transport = (options: TransportOptions) => {
         retryable: false,
       })
     if (options.signal?.aborted) return new CliError("cancelled", `the ${SERVICE} request was stopped`)
-    const timedOut = (error as { name?: string } | undefined)?.name === "TimeoutError"
+    const timedOut = error instanceof Error && error.name === "TimeoutError"
     return timedOut
       ? new CliError("timeout", `${SERVICE} did not answer in time`, { retryable: true })
       : new CliError("network_error", `${SERVICE} could not be reached`, { retryable: true })

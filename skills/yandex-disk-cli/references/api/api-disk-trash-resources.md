@@ -37,7 +37,7 @@
 
 - What: Восстановить ресурс из Корзины
 - Call: `PUT /v1/disk/trash/resources/restore`, effect: write
-- Permission keys: `files.delete`
+- Permission keys: `files.delete`, `files.restore`
 
 | Flag | Required | What |
 |---|---|---|
