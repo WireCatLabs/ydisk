@@ -143,6 +143,20 @@ describe("the Yandex Disk source", () => {
   })
 })
 
+describe("a chosen folder renamed on the Disk", () => {
+  it("is unavailable and its copies leave, until it is added again under its new path", async () => {
+    const disk = tree()
+    const env = sandbox()
+    const run = (...argv: string[]) => runCli(["personal", ...argv, "--json"], { service: disk, env })
+    await run("folders", "add", "/Work")
+    expect((await run("sync")).json().item).toMatchObject({ saved: 2 })
+    disk.move("disk:/Work", "disk:/Renamed")
+    expect((await run("sync")).json().item).toMatchObject({ removed: 3 })
+    expect((await run("folders", "add", "/Renamed")).code).toBe(0)
+    expect((await run("sync")).json().item).toMatchObject({ saved: 2 })
+  })
+})
+
 describe("the shared documents commands over Yandex Disk", () => {
   for (const c of documentCommandsContract(async () => {
     const disk = tree()
