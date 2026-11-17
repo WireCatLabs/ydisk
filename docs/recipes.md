@@ -2,7 +2,7 @@
 
 Whole tasks you can hand to your agent, each with a request to copy and the commands the agent runs for it. They
 assume you have [signed in](installation.md), chosen folders and [connected your agent](mcp.md). Change the profile,
-paths and names to yours; the ones here are examples.
+paths and names to yours. The ones here are examples.
 
 **On this page:**
 
@@ -68,7 +68,7 @@ ydisk personal files publish /Documents/Flat/lease-2026.pdf
 ydisk personal files unpublish /Documents/Flat/lease-2026.pdf
 ```
 
-Anyone who has a public link can open the file. At a terminal the tool asks first; over MCP it follows the
+Anyone who has a public link can open the file. At a terminal the tool asks first. Over MCP it follows the
 `files.share` permission, see [connect your agent](mcp.md#decide-what-the-agent-may-change).
 
 ## Put a report the agent wrote on the Disk

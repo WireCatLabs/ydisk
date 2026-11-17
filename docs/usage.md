@@ -36,7 +36,7 @@ ydisk personal folders add /Documents/Contracts
 ```
 
 A chosen folder brings in everything under it, subfolders included. `folders list` shows the folders you chose, and
-`folders remove` takes one out; the next sync drops its documents from the copy.
+`folders remove` takes one out. The next sync drops its documents from the copy.
 
 Choose a few folders that hold documents, not the whole Disk. Yandex Disk does not tell a tool what changed, so each
 sync lists every chosen folder and its subfolders again. A folder of photos adds listing time and no searchable text.
@@ -56,7 +56,7 @@ folder takes several runs: run `sync` again until `status` shows no pending work
 sync goes on from where the last one stopped.
 
 Run `sync` whenever you want the copy to catch up, for example before you ask your agent about recent files. Nothing
-runs in the background. `sync --rescan` reads every chosen folder from the start; run it once, then go on with a plain
+runs in the background. `sync --rescan` reads every chosen folder from the start. Run it once, then go on with a plain
 `sync`.
 
 A chosen folder that you rename or move on the Disk is no longer found, and its documents leave the copy. Add it
@@ -67,10 +67,10 @@ again under its new path.
 | On the Disk | In the copy |
 | --- | --- |
 | PDF with a text layer, Word `.docx`, Excel `.xlsx`, CSV, TSV, plain text, Markdown | The text, the name, the path, the size and the dates |
-| A scanned PDF or a picture | The name, the path and the dates; there is no text to read |
+| A scanned PDF or a picture | The name, the path and the dates. There is no text to read |
 | Any other file, and any file over 50 MB | The name, the path and the dates |
 
-`status` lists each file kept by name only, with the reason. The files themselves stay on the Disk; the copy holds
+`status` lists each file kept by name only, with the reason. The files themselves stay on the Disk. The copy holds
 their text. Times are kept and shown in UTC.
 
 ## Read a synced document
@@ -83,7 +83,7 @@ ydisk personal documents export 1a2b3c --output ./contract.md
 
 `documents show` prints the whole text of one document, found by its id from `search` or `documents list`. The id
 above is an example. `documents export` writes it to a new Markdown file. Tags, notes and memories stay with a
-document and never reach the Disk; see [find a document](search.md).
+document and never reach the Disk. See [find a document](search.md).
 
 ## Work with files live
 
@@ -111,7 +111,7 @@ ydisk personal files unpublish /Documents/plan.pdf
 - `--replace` on an upload, a copy or a move overwrites a file already at that path.
 
 At a terminal the tool asks before a delete, an overwrite and a public link. Over MCP there is no one to ask, so set
-those permissions for an agent; see [settings](configuration.md#permissions). Add `--dry-run` to any change to see
+those permissions for an agent. See [settings](configuration.md#permissions). Add `--dry-run` to any change to see
 what it would do without doing it.
 
 Every operation of Yandex's Disk API is a command too: `ydisk personal api list` lists them, and

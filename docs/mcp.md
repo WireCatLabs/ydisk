@@ -24,7 +24,7 @@ ydisk skill install
 
 It puts the skill where Claude Code (`~/.claude/skills/`) and Codex, Gemini CLI and OpenClaw (`~/.agents/skills/`)
 look for it. `ydisk skill install --for hermes` adds that folder to Hermes Agent's own settings too, which a plain
-`skill install` leaves alone. Run it again after an update; `ydisk skill status` says whether the installed skill
+`skill install` leaves alone. Run it again after an update. `ydisk skill status` says whether the installed skill
 matches this version.
 
 Then ask in plain words, and name the profile:
@@ -44,7 +44,7 @@ ydisk personal mcp add codex --allow-writes
 ```
 
 `--allow-writes` confirms that you know the server offers the commands that change the Disk. The profile's
-permissions still decide what runs; see [below](#decide-what-the-agent-may-change).
+permissions still decide what runs. See [below](#decide-what-the-agent-may-change).
 
 ## Claude Desktop, Cursor and other MCP apps
 
@@ -72,7 +72,7 @@ ydisk personal mcp server start --public-url https://laptop.example.ts.net
 ydisk personal mcp server status
 ```
 
-The address above is an example; use your tunnel's. The server listens on `127.0.0.1`, port 8765 (`--port` changes
+The address above is an example. Use your tunnel's. The server listens on `127.0.0.1`, port 8765 (`--port` changes
 it), and runs in the background until `ydisk personal mcp server stop`. A browser app logs in with a one-time code
 that `server start` and `server status` print. `ydisk personal mcp revoke` ends every login. Setting up the tunnel and
 the app is on the [browser apps page](https://wirecat.dev/en/docs/browser-apps).

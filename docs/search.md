@@ -2,7 +2,7 @@
 
 Find a contract, a figure or a decision in your Disk folders by what the document says, even when you do not remember
 its name. Search reads the copy on your computer, so it answers without the internet and costs no request to Yandex.
-It covers the folders you chose and synced; see [folders and sync](usage.md).
+It covers the folders you chose and synced. See [folders and sync](usage.md).
 
 ```text prompt
 Use ydisk CLI with profile personal. Find the document where we agreed the budget for the spring campaign.
@@ -27,7 +27,7 @@ ydisk personal search "invoice 2026" --exact
 ```
 
 Search finds other forms of a word: "договор" also finds "договора" and "договоре", and "budgets" finds "budget".
-`--exact` matches the words as written. Each hit has the document's id, its path on the Disk and an excerpt; pass the
+`--exact` matches the words as written. Each hit has the document's id, its path on the Disk and an excerpt. Pass the
 id to `documents show` for the whole text.
 
 A field narrows the hits: `tag:` finds documents with a tag of yours, and `date:` by the last change on the Disk.
@@ -50,13 +50,13 @@ ydisk personal sync --embed
 ydisk personal search "what did we agree to spend?"
 ```
 
-The download uses the network; indexing and search run on your computer. Without the model, word search works as
+The download uses the network. Indexing and search run on your computer. Without the model, word search works as
 before.
 
 ## Find a file by its name
 
 `catalog` searches the names and types of the files and folders that sync listed, including photos and other files
-without text. `catalog import` puts what sync listed into the local store; run it after a sync:
+without text. `catalog import` puts what sync listed into the local store. Run it after a sync:
 
 ```sh
 ydisk personal catalog import
@@ -68,7 +68,7 @@ A file outside the chosen folders is found live: `files list --folder /Documents
 
 ## Tags and notes
 
-Tags and notes are yours and stay on your computer; the Disk never sees them. They stay with a document when the
+Tags and notes are yours and stay on your computer. The Disk never sees them. They stay with a document when the
 file moves.
 
 ```sh
@@ -77,7 +77,7 @@ ydisk personal notes add 1a2b3c "Signed copy is with Anna"
 ydisk personal documents context 1a2b3c
 ```
 
-The id above is an example; take a real one from `search` or `documents list`. `documents context` shows a document
+The id above is an example. Take a real one from `search` or `documents list`. `documents context` shows a document
 with its tags, notes and memories.
 
 ## Across your other sources

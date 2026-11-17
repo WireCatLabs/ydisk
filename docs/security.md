@@ -19,9 +19,9 @@ such as the keyring, permissions, MCP and what never reaches a log, is on the
 | The Yandex token | The system keyring, or a private file where there is none | `ydisk personal session end` |
 | The text of the files in the chosen folders, with their names, paths, sizes, dates and MD5 checksums | The local store, `wirecat.db`, shared with the other WireCat tools | `folders remove` with the folder's id from `folders list`, then `sync` |
 | Your tags, notes and memories about documents | The local store | `tags remove`, `notes remove` |
-| Settings and run records | The folders `ydisk doctor` shows | `ydisk runs list` shows them; they expire after the days in [settings](configuration.md#run-records) |
+| Settings and run records | The folders `ydisk doctor` shows | `ydisk runs list` shows them. They expire after the days in [settings](configuration.md#run-records) |
 
-The files themselves stay on the Disk; a copy of a file is saved only when you run `files download --output`.
+The files themselves stay on the Disk. A copy of a file is saved only when you run `files download --output`.
 Public links (`public_url`) are not kept by the sync. Nothing goes to WireCat: there is no WireCat server and no
 account with us.
 
@@ -29,20 +29,20 @@ account with us.
 
 `ydisk` keeps its settings in `config.json` and its state in the folders `ydisk doctor` shows. It talks to one
 service, Yandex Disk's API at `cloud-api.yandex.net`. `session start` keeps the Yandex OAuth token in the OS keyring,
-or in a private file where no keyring works; the token goes only into the Authorization header of a request to
+or in a private file where no keyring works. The token goes only into the Authorization header of a request to
 `cloud-api.yandex.net`, never into an address, an answer, a run record or the send journal. Downloads and uploads go
 to the link Yandex gives (`downloader.disk.yandex.ru`, `*.disk.yandex.net`, `*.storage.yandex.net`) without the token, and those links are
 never printed.
 
 Besides Yandex, `ydisk` asks the npm registry once a day whether a newer version exists, unless `update_check` is
 `false`. Text goes to an AI provider only when you set one up, such as `embedding_provider` set to `openai` or
-`memories extract`; by default search by meaning runs on your computer.
+`memories extract`. By default search by meaning runs on your computer.
 
 ## Agents and MCP
 
 Over MCP an agent reads a file's text with `files download` but cannot save it to a path: `--output` is the owner's
 only. `files upload` refuses credential files, browser profiles and the WireCat folders unless the owner adds
-`--allow-any-file`. `files delete`, `--replace` and the public-link commands ask first at a terminal; over MCP only
+`--allow-any-file`. `files delete`, `--replace` and the public-link commands ask first at a terminal. Over MCP only
 `deny` stops them, so set `files.delete=deny` and `files.share=deny` for an agent that should not, and `files.upload=deny` for one that
 should put no local file on the Disk.
 

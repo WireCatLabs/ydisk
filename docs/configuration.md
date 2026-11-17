@@ -21,7 +21,7 @@ ydisk personal config unset limit
 | --- | --- |
 | `allow` | The command runs. |
 | `ask` | At a terminal the tool asks first. Over MCP there is no one to ask, so the command runs. |
-| `readonly` | A read runs; a change is refused. |
+| `readonly` | A read runs. A change is refused. |
 | `deny` | The command is refused, with exit code 5. |
 
 Two keys guard the changes that are hard to undo. They are `ask` until you change them. The other `files` keys are
@@ -43,18 +43,18 @@ stops `api resources-move` too. `--dry-run` on any change shows each key it chec
 change.
 
 `YDISK_READ_ONLY=1` refuses every change, whatever the permissions say. For one MCP server only, `--permission
-files.delete=deny` makes a key stricter; see [connect your agent](mcp.md#decide-what-the-agent-may-change).
+files.delete=deny` makes a key stricter. See [connect your agent](mcp.md#decide-what-the-agent-may-change).
 
 ## Run records
 
 A command that fails is kept as a run, for `ydisk runs list` and `runs show`. A command that reaches Yandex Disk, such
 as `files list`, `sync` or `session status --check`, is kept when it succeeds too, unless `record` is `false` (then
-only failures) or it ran with `--no-record`. `record_input` decides whether a run keeps the words you typed; it is
-`true` unless you set it to `false`. Secrets are masked either way; see [Security](security.md).
+only failures) or it ran with `--no-record`. `record_input` decides whether a run keeps the words you typed. It is
+`true` unless you set it to `false`. Secrets are masked either way. See [Security](security.md).
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| `record` | `true` | Keep every run; `false` keeps failed runs only. |
+| `record` | `true` | Keep every run. `false` keeps failed runs only. |
 | `record_input` | `true` | Keep the words typed on the command line: `true`, `false`, or `failed`. |
 | `keep_runs_for_days` | `30` | Days a run is kept. |
 | `keep_successful_runs_for_days` | `7` | Days a successful run is kept. |
