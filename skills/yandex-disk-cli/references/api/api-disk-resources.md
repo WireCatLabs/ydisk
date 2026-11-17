@@ -161,6 +161,7 @@
 
 - What: Загрузить файл в Диск по URL
 - Call: `POST /v1/disk/resources/upload`, effect: write
+- Permission keys: `files.upload`
 
 | Flag | Required | What |
 |---|---|---|

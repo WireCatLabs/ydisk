@@ -115,6 +115,8 @@ it.each([
   ["resources-publish", "files.publish"],
   ["resources-unpublish", "files.unpublish"],
   ["trash-resources-restore", "files.restore"],
+  ["resources-upload-url", "files.upload"],
+  ["public-resources-save-to-disk", "files.upload"],
 ])("api %s checks %s, as the files command that does the same, in the run and in --dry-run", async (command, key) => {
   withPermissions({ api: "allow", ...allowed(), [key]: "deny" })
   const service = fake()

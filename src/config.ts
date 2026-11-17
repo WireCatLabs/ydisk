@@ -29,6 +29,9 @@ const COMMAND_KEYS: Readonly<Record<string, string>> = {
   "resources-publish": "files.publish",
   "resources-unpublish": "files.unpublish",
   "trash-resources-restore": "files.restore",
+  // Both put a file on the Disk: one from an address on the web, one from someone's public link.
+  "resources-upload-url": "files.upload",
+  "public-resources-save-to-disk": "files.upload",
 }
 
 export const API = {

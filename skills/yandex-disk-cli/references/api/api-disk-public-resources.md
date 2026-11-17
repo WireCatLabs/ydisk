@@ -24,6 +24,7 @@
 
 - What: Сохранить публичный ресурс в папку Загрузки
 - Call: `POST /v1/disk/public/resources/save-to-disk`, effect: write
+- Permission keys: `files.upload`
 
 | Flag | Required | What |
 |---|---|---|
