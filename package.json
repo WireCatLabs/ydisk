@@ -43,6 +43,7 @@
     "package:check": "pnpm smoke",
     "docs:check": "cli-dev docs-check --rules scripts/docs-rules.ts --pages && cli-dev changelog fragments && pnpm docs:spell && rumdl check --config config/wirecat/rumdl.toml README.md SECURITY.md CHANGELOG.md CLAUDE.md AGENTS.md docs/*.md docs/dev/*.md && pnpm docs:lint",
     "docs:lint": "markdownlint-cli2",
+    "docs:images": "node --experimental-strip-types docs/images/src/render.ts",
     "contracts:check": "cli-contract contracts/plan.json && cli-dev manifest --program dist/program.js --identity dist/wcat.js --check",
     "security:no-leak": "cli-testing security no-leak . contracts/no-leak.json",
     "version:check": "cli-dev version && cli-dev changelog level",
