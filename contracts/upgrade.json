@@ -1,0 +1,121 @@
+{
+  "command": "node",
+  "args": ["../dist/bin/ydisk.js"],
+  "previous": {
+    "entry": "./previous/node_modules/@wirecat/previous-cli/dist/bin/ydisk.js",
+    "version": "0.1.0"
+  },
+  "canaries": ["wirecat-synthetic-document-canary"],
+  "cases": [
+    {
+      "id": "seed-previous-sync",
+      "args": ["{{previousEntry}}"],
+      "entry": "./seed.mjs",
+      "exit": 0,
+      "stream": "stdout",
+      "kind": "json",
+      "json": {
+        "seeded": true
+      }
+    },
+    {
+      "id": "previous-documents",
+      "args": ["contract", "documents", "list", "--json"],
+      "exit": 0,
+      "stream": "stdout",
+      "kind": "json",
+      "previous": true,
+      "allowSensitiveOutput": true,
+      "json": {
+        "items": [
+          {
+            "name": "synthetic-budget.md"
+          }
+        ]
+      }
+    },
+    {
+      "id": "candidate-documents",
+      "args": ["contract", "documents", "list", "--json"],
+      "exit": 0,
+      "stream": "stdout",
+      "diagnosticPattern": "^(the store moved to schema \\d+; every other WireCat CLI that uses it needs a version that speaks it — run `<cli> upgrade` for each\\n)?$",
+      "kind": "json",
+      "allowSensitiveOutput": true,
+      "json": {
+        "items": [
+          {
+            "id": "synthetic-resource-1",
+            "name": "synthetic-budget.md",
+            "path": "disk:/Synthetic/synthetic-budget.md",
+            "reference": "document:1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "candidate-document-text",
+      "args": ["contract", "documents", "show", "synthetic-resource-1", "--json"],
+      "exit": 0,
+      "stream": "stdout",
+      "diagnosticPattern": "^(the store moved to schema \\d+; every other WireCat CLI that uses it needs a version that speaks it — run `<cli> upgrade` for each\\n)?$",
+      "kind": "json",
+      "allowSensitiveOutput": true,
+      "contains": "wirecat-synthetic-document-canary"
+    },
+    {
+      "id": "candidate-status",
+      "args": ["contract", "status", "--json"],
+      "exit": 0,
+      "stream": "stdout",
+      "diagnosticPattern": "^(the store moved to schema \\d+; every other WireCat CLI that uses it needs a version that speaks it — run `<cli> upgrade` for each\\n)?$",
+      "kind": "json",
+      "allowSensitiveOutput": true,
+      "json": {
+        "item": {
+          "profile": "contract",
+          "selected_folders": ["synthetic-folder"],
+          "documents": 1
+        }
+      }
+    },
+    {
+      "id": "candidate-search",
+      "args": ["contract", "search", "budget", "--exact", "--json"],
+      "exit": 0,
+      "stream": "stdout",
+      "diagnosticPattern": "^(the store moved to schema \\d+; every other WireCat CLI that uses it needs a version that speaks it — run `<cli> upgrade` for each\\n)?$",
+      "kind": "json",
+      "allowSensitiveOutput": true,
+      "json": {
+        "item": {
+          "hits": [
+            {
+              "ref": "document:1",
+              "provider": "ydisk",
+              "account": "contract"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "candidate-notes",
+      "args": ["contract", "notes", "list", "synthetic-resource-1.md", "--json"],
+      "exit": 0,
+      "stream": "stdout",
+      "diagnosticPattern": "^(the store moved to schema \\d+; every other WireCat CLI that uses it needs a version that speaks it — run `<cli> upgrade` for each\\n)?$",
+      "kind": "json",
+      "allowSensitiveOutput": true,
+      "contains": "Synthetic owner memo"
+    },
+    {
+      "id": "candidate-unknown-document",
+      "args": ["contract", "documents", "show", "999999", "--json"],
+      "exit": 6,
+      "stream": "stderr",
+      "kind": "json",
+      "errorCode": "not_found"
+    }
+  ]
+}
