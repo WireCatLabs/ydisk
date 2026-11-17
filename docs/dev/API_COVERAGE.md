@@ -46,7 +46,7 @@ Run: pnpm generate
 
 ## Sign-in
 
-Not from the source: The Swagger 1.2 source names no sign-in. https://yandex.ru/dev/disk-api/doc/en/concepts/quickstart: every request carries `Authorization: OAuth <token>`; the public-key reads take it too.
+Not from the source: The Swagger 1.2 source names no sign-in. https://yandex.ru/dev/disk-api/doc/en/concepts/quickstart: every request carries `Authorization: OAuth <token>`.
 
 ## Permission keys
 

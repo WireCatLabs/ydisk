@@ -64,7 +64,7 @@ const artifacts = generate(
       security: [{ oauth: [] }],
       reason:
         "The Swagger 1.2 source names no sign-in. https://yandex.ru/dev/disk-api/doc/en/concepts/quickstart: every " +
-        "request carries `Authorization: OAuth <token>`; the public-key reads take it too.",
+        "request carries `Authorization: OAuth <token>`.",
     },
   },
 )

@@ -65,6 +65,7 @@ it("sends every operation the spec offers as the spec describes it, with the pro
   expect(service.calls).toHaveLength(API.manifest.operations.length)
   for (const call of service.calls) {
     expect(call.url.host).toBe("cloud-api.yandex.net")
+    expect(call.url.pathname).toMatch(/^\/v1\/disk(\/|$)/)
     expect(call.headers.get("authorization")).toBe(`OAuth ${FAKE_TOKEN}`)
   }
 })
