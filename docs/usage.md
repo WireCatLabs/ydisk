@@ -13,6 +13,35 @@ ydisk personal config show
 `YDISK_PROFILE=personal` does the same for one shell session. No profile is ever assumed, not even the only one: a
 command without one stops with exit code 2 and lists the profiles on this computer.
 
+## Copy folders and search them
+
+Choose the Disk folders whose text you want to search, then copy them to your computer with `sync`:
+
+```sh
+ydisk personal folders browse                # the folders at the top of the Disk
+ydisk personal folders add /Documents
+ydisk personal sync
+ydisk personal search "quarterly budget"
+```
+
+`folders browse --folder /Documents` goes one level down. `folders list` shows the folders you chose, and
+`folders remove` takes one out. Each `sync` walks the chosen folders again and reads only the files that changed.
+The text of PDF, docx, xlsx, CSV, TSV, text and Markdown files is copied; other files are kept by name. Run `sync`
+again whenever you want the copy to catch up.
+
+## Work with the files live
+
+The `files` commands reach the Disk directly and need no `sync`:
+
+```sh
+ydisk personal files list --folder /Documents
+ydisk personal files download /Documents/plan.pdf --json
+ydisk personal files move /Documents/old.pdf --folder /Archive
+```
+
+`files delete` moves a file to the trash, and `files restore trash:/old.pdf` brings it back. Deleting, replacing and
+public links ask first at a terminal; see [settings](configuration.md#permissions).
+
 ## Output for scripts
 
 Every command except `mcp serve` on stdin and stdout takes `--json`, and prints one JSON value on stdout. Errors are JSON on stderr, with a code to branch
