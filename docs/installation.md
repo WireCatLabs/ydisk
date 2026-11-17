@@ -58,8 +58,7 @@ Yandex may ask to confirm your identity before it lets you create apps. Without 
 and limits how many apps you can create, which does not stop you here; see
 [Yandex's page on it](https://yandex.ru/dev/id/doc/en/confirm-account).
 
-Keep the token like a password. Anyone who has it can use your Disk with the rights you chose, until you revoke the
-app on the [data access page of your Yandex ID](https://id.yandex.ru/personal/data-access).
+Keep the token like a password. Anyone who has it can use your Disk with the rights you chose.
 
 ## Sign in
 
@@ -91,6 +90,8 @@ Yandex keeps a token valid for months and extends it while it is used
 ([Yandex ID](https://yandex.ru/dev/id/doc/en/concepts/ya-oauth-intro)). When Yandex stops accepting it, the commands
 fail with exit code 4: get a new token the same way and run `session start` again.
 
+`ydisk personal session end` removes the token from this computer.
+
 ## A computer with no keyring
 
 On a server or a container without a keyring, the tool keeps the token in a private file only you can read, and says
@@ -118,7 +119,6 @@ npm uninstall -g @wirecat/yandex-disk-cli
 ```
 
 The settings and the local store stay in the folders `ydisk doctor` showed, for the other WireCat tools that share
-the store. Delete them by hand if you no longer need them. To stop Yandex from accepting the token anywhere, revoke the
-app on the [data access page of your Yandex ID](https://id.yandex.ru/personal/data-access).
+the store. Delete them by hand if you no longer need them.
 
 Next: [choose folders and sync them](usage.md).

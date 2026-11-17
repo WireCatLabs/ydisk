@@ -16,7 +16,7 @@ such as the keyring, permissions, MCP and what never reaches a log, is on the
 
 | What | Where | How to remove it |
 | --- | --- | --- |
-| The Yandex token | The system keyring, or a private file where there is none | `ydisk personal session end`, and revoke the app on the [data access page of your Yandex ID](https://id.yandex.ru/personal/data-access) |
+| The Yandex token | The system keyring, or a private file where there is none | `ydisk personal session end` |
 | The text of the files in the chosen folders, with their names, paths, sizes, dates and MD5 checksums | The local store, `wirecat.db`, shared with the other WireCat tools | `folders remove` with the folder's id from `folders list`, then `sync` |
 | Your tags, notes and memories about documents | The local store | `tags remove`, `notes remove` |
 | Settings and run records | The folders `ydisk doctor` shows | `ydisk runs list` shows them; they expire after the days in [settings](configuration.md#run-records) |
