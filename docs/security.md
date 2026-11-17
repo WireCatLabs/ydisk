@@ -7,7 +7,7 @@ What WireCat CLIs share — the keyring, permissions, MCP and what never reaches
 service, Yandex Disk's API at `cloud-api.yandex.net`. `session start` keeps the Yandex OAuth token in the OS keyring,
 or in a private file where no keyring works; the token goes only into the Authorization header of a request to
 `cloud-api.yandex.net`, never into an address, an answer, a run record or the send journal. Downloads and uploads go
-to the link Yandex gives (`downloader.disk.yandex.ru`, `*.disk.yandex.net`) without the token, and those links are
+to the link Yandex gives (`downloader.disk.yandex.ru`, `*.disk.yandex.net`, `*.storage.yandex.net`) without the token, and those links are
 never printed.
 
 Over MCP an agent reads a file's text with `files download` but cannot save it to a path: `--output` is the owner's

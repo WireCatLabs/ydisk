@@ -21,9 +21,9 @@ export const DESKTOP: ManifestIdentity = {
   ...IDENTITY,
   docs: "https://github.com/WireCatLabs/ydisk#readme",
   // Every host the CLI contacts (WC-CMD-32). The API is cloud-api.yandex.net; its download and upload links point at
-  // downloader.disk.yandex.ru and *.disk.yandex.net (https://yandex.ru/dev/disk-api/doc/en/reference/content, …/upload),
-  // names still to confirm by a live answer.
-  hosts: ["cloud-api.yandex.net", "downloader.disk.yandex.ru", "*.disk.yandex.net"],
+  // downloader.disk.yandex.ru and *.disk.yandex.net (https://yandex.ru/dev/disk-api/doc/en/reference/content, …/upload);
+  // the first live check (2026-11-17) got a link on mds.storage.yandex.net, which the docs do not name.
+  hosts: ["cloud-api.yandex.net", "downloader.disk.yandex.ru", "*.disk.yandex.net", "*.storage.yandex.net"],
   syncs: "files in the Disk folders you choose",
   tagline: "Search your Yandex Disk folders and work with the files",
   signIn: {

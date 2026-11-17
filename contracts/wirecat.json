@@ -1388,6 +1388,7 @@
       "cloud-api.yandex.net",
       "downloader.disk.yandex.ru",
       "*.disk.yandex.net",
+      "*.storage.yandex.net",
       "registry.npmjs.org",
       "huggingface.co",
       "*.huggingface.co",

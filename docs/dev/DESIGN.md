@@ -55,5 +55,6 @@ The documents commands, the sync engine, the store, search and MCP are cli-core'
 ## Open questions for the owner
 
 - The download and upload host names (`downloader.disk.yandex.ru`, `*.disk.yandex.net`) are from Yandex's docs; the
-  first live check confirms them.
+  first live check got a link on `mds.storage.yandex.net`, which the docs do not name, so `*.storage.yandex.net` is
+  allowed too.
 - Yandex documents no rate limit; the pace is 120 requests a minute per profile until a 429 says otherwise.
