@@ -6,7 +6,7 @@
 
 - What: Создать копию файла или папки
 - Call: `POST /v1/disk/resources/copy`, effect: write
-- Permission keys: `files.delete`
+- Permission keys: `files.delete`, `files.copy`
 
 | Flag | Required | What |
 |---|---|---|
@@ -20,6 +20,7 @@
 
 - What: Создать каталог
 - Call: `PUT /v1/disk/resources`, effect: write
+- Permission keys: `files.create`
 
 | Flag | Required | What |
 |---|---|---|
@@ -91,7 +92,7 @@
 
 - What: Переместить файл или папку
 - Call: `POST /v1/disk/resources/move`, effect: write
-- Permission keys: `files.delete`
+- Permission keys: `files.delete`, `files.move`
 
 | Flag | Required | What |
 |---|---|---|
@@ -121,7 +122,7 @@
 
 - What: Опубликовать ресурс
 - Call: `PUT /v1/disk/resources/publish`, effect: write
-- Permission keys: `files.share`
+- Permission keys: `files.share`, `files.publish`
 - Body: `PublishResource`, required
 
 | Flag | Required | What |
@@ -136,7 +137,7 @@
 
 - What: Отменить публикацию ресурса
 - Call: `PUT /v1/disk/resources/unpublish`, effect: write
-- Permission keys: `files.share`
+- Permission keys: `files.share`, `files.unpublish`
 
 | Flag | Required | What |
 |---|---|---|

@@ -23,8 +23,7 @@ import { filesCommand } from "./commands/files.js"
 import { libraryCommands } from "./commands/library.js"
 import { sessionCommand } from "./commands/session.js"
 import { configuration } from "./config.js"
-import { IDENTITY, PACKAGE, SKILL } from "./identity.js"
-import { SERVICE } from "./yandex/transport.js"
+import { IDENTITY, PACKAGE, SERVICE, SKILL } from "./identity.js"
 
 const update = appUpdate({
   packageName: PACKAGE,

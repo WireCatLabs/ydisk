@@ -50,6 +50,9 @@ export const PAGE = 200
 /** One folder is read whole by `children`; past this many entries it is too large for one step. */
 const MOST_CHILDREN = 10_000
 
+/** A path in the trash as the API takes it: `trash:/old.pdf`, from `trash:/old.pdf`, `/old.pdf` or `old.pdf`. */
+export const trashPath = (input: string) => diskPath(input.replace(/^trash:/u, "")).replace(/^disk:/u, "trash:")
+
 /** A path as the API takes it: `disk:/Docs`, from `/Docs`, `Docs` or `disk:/Docs`. */
 export const diskPath = (input: string) => {
   const bare = input.replace(/^disk:/u, "").trim()
@@ -63,8 +66,19 @@ const webUrl = (path: string, folder: boolean) => {
   return `https://disk.yandex.ru/client/disk${shown === "/" ? "" : shown.split("/").map(encodeURIComponent).join("/")}`
 }
 
+/**
+ * Yandex sends a time with an offset, `2026-01-02T03:00:00+03:00`; it leaves as UTC ending in `Z` (WC-TIME-2). A time
+ * that does not parse is left out rather than guessed.
+ */
+const utc = (value: string | undefined) => {
+  const ms = value === undefined ? Number.NaN : Date.parse(value)
+  return Number.isNaN(ms) ? undefined : new Date(ms).toISOString()
+}
+
 const fileOf = (resource: Resource, parents: string[]): DiskFile => {
   const folder = resource.type === "dir"
+  const modifiedAt = utc(resource.modified)
+  const createdAt = utc(resource.created)
   return {
     id: resource.resource_id,
     name: resource.name || "Disk",
@@ -72,8 +86,8 @@ const fileOf = (resource: Resource, parents: string[]): DiskFile => {
     parents,
     // md5 changes with the content; a folder has none, and its revision moves with any change below it.
     ...(resource.md5 ? { version: resource.md5 } : {}),
-    ...(resource.modified ? { modifiedAt: resource.modified } : {}),
-    ...(resource.created ? { createdAt: resource.created } : {}),
+    ...(modifiedAt ? { modifiedAt } : {}),
+    ...(createdAt ? { createdAt } : {}),
     ...(resource.size === undefined ? {} : { size: resource.size }),
     url: webUrl(resource.path, folder),
     trashed: false,
@@ -92,8 +106,8 @@ export const skipReason = (file: SourceFile) =>
       ? `file is larger than ${Math.round(MAX_FILE_BYTES / 1024 / 1024)} MB`
       : undefined
 
-const pathOf = (id: string, known?: SourceFile) => {
-  const path = (known?.providerMetadata as DiskFile["providerMetadata"] | undefined)?.path
+const pathOf = (id: string, known?: DiskFile) => {
+  const path = known?.providerMetadata.path
   // The API takes a path, never a resource_id: an id the sync has not listed cannot be read.
   if (known?.id !== id || !path)
     throw new CliError("not_found", "Yandex Disk finds a file by its path; this one was not listed by a sync", {
@@ -112,8 +126,6 @@ export const diskSource = (
   links: FetchLike,
   signal?: AbortSignal,
 ): FeedlessDocumentSource<DiskFile> & {
-  api: Transport
-  links: FetchLike
   download(id: string, file?: DiskFile): Promise<Response>
   account(): Promise<{ id: string; login: string | null; name: string | null }>
   byPath(path: string): Promise<DiskFile>
@@ -171,8 +183,6 @@ export const diskSource = (
   }
   const user = async () => (await api.send({ method: "GET", path: "disk", query: { fields: "user" } }, Disk)).user
   return {
-    api,
-    links,
     download,
     account: async () => {
       const { uid, login, display_name } = await user()

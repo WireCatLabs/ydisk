@@ -6,9 +6,8 @@ import { type DocumentWords, documentLibraryCommands } from "@wirecat/cli-core/d
 import type { Command } from "commander"
 import { configuration } from "../config.js"
 import { type Disk, diskFor, tokenOf } from "../context.js"
-import { IDENTITY } from "../identity.js"
+import { IDENTITY, SERVICE } from "../identity.js"
 import { type DiskFile, diskPath, isFolder, PAGE, skipReason } from "../yandex/source.js"
-import { SERVICE } from "../yandex/transport.js"
 
 export const PROVIDER = {
   name: "yandex-disk",
@@ -45,6 +44,7 @@ export const libraryCommands = (): Command[] =>
     words: WORDS,
     service: SERVICE,
     source: (command, events) => diskFor(command, events, tokenOf(command)),
+    // cli-core hands back the source that `source` above built, typed only as its documents part.
     folder: (source, input) => (source as Disk).byPath(diskPath(input)),
     ingestion: (store) =>
       documentIngestion<DiskFile>(store, {
@@ -85,6 +85,7 @@ export const libraryCommands = (): Command[] =>
       annotate(folders.command("browse"), {
         effects: REMOTE_READ,
         offline: false,
+        output: { entity: "document", view: "disk_folder" },
         examples: [
           `${IDENTITY.command} personal folders browse`,
           `${IDENTITY.command} personal folders browse --folder /Work --json`,
@@ -102,6 +103,7 @@ export const libraryCommands = (): Command[] =>
           if (!Number.isSafeInteger(offset) || offset < 0)
             throw new CliError("validation_error", "--cursor takes the value page.next gave", { param: "--cursor" })
           const chosen = new Set(tools.roots())
+          // The source `source` above built, typed by cli-core only as its documents part.
           const page = await tools.withSource((source) => (source as Disk).page(path, offset))
           tools.output(
             listOf("folders browse", {

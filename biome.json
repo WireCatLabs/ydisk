@@ -39,6 +39,30 @@
           }
         }
       }
+    },
+    {
+      "includes": ["src/commands/**", "!**/*.test.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@modelcontextprotocol/**"],
+                    "message": "cli-core's appMcpCommand serves MCP; commands and services do not know the protocol"
+                  },
+                  {
+                    "group": ["**/yandex/transport.js", "**/yandex/transport"],
+                    "message": "commands speak to the Disk through src/yandex/source.ts and writes.ts; only src/yandex/ and context.ts build requests (WC-ARCH-1, WC-ARCH-3)"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

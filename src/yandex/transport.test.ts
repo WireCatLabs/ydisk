@@ -51,6 +51,8 @@ it("a refused token is an authentication_error that never repeats the service's 
   const failure = await accountOver(fetch).catch((error: unknown) => error)
   expect(failure).toMatchObject({ code: "authentication_error" })
   expect(JSON.stringify(failure)).not.toContain(FAKE_TOKEN)
+  // The command layer adds how to sign in again; the transport names no command (WC-ARCH-16).
+  expect(String(failure)).not.toContain("session")
 })
 
 it('refuses an id of "." or ".." before any request, since it would reach another endpoint', async () => {

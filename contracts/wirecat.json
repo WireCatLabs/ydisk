@@ -106,7 +106,8 @@
         "remote": "read",
         "local": "read"
       },
-      "permission": "folders.browse"
+      "permission": "folders.browse",
+      "entity": "document"
     },
     {
       "path": [
@@ -625,7 +626,8 @@
         "remote": "read",
         "local": "read"
       },
-      "permission": "files.list"
+      "permission": "files.list",
+      "entity": "document"
     },
     {
       "path": [
@@ -637,7 +639,8 @@
         "remote": "read",
         "local": "read"
       },
-      "permission": "files.show"
+      "permission": "files.show",
+      "entity": "document"
     },
     {
       "path": [
@@ -649,7 +652,8 @@
         "remote": "read",
         "local": "write"
       },
-      "permission": "files.download"
+      "permission": "files.download",
+      "entity": "document"
     },
     {
       "path": [

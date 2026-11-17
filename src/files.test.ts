@@ -165,6 +165,16 @@ describe("files, what an agent may not do and what may not be lost", () => {
     expect(done.code, done.err).toBe(0)
     expect(done.json().item).toMatchObject({ public_url: "https://yadi.sk/d/fake-public" })
   })
+
+  it("leaves public_url out, as not known, when the link cannot be read back after the publish", async () => {
+    withPermissions({ "files.share": "allow" })
+    const done = await runCli(["personal", "files", "publish", "/plan.txt", "--json"], {
+      service: diskApi({ publicUrlFails: true }),
+    })
+    expect(done.code, done.err).toBe(0)
+    expect(done.json().item).toMatchObject({ path: "disk:/plan.txt", status: "done" })
+    expect(done.json().item).not.toHaveProperty("public_url")
+  })
 })
 
 describe("files, the options of each command", () => {

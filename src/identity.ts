@@ -33,6 +33,8 @@ export const DESKTOP: ManifestIdentity = {
 }
 
 /** The API's one host: the token goes nowhere else. */
+export const SERVICE = "Yandex Disk"
+
 export const API_HOSTS = ["cloud-api.yandex.net"]
 
 export const SKILL = new URL("../skills/yandex-disk-cli/SKILL.md", import.meta.url)

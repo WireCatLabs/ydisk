@@ -30,28 +30,12 @@ import {
   uploadBlob,
 } from "@wirecat/cli-core/sends"
 import { Command } from "commander"
-import * as v from "valibot"
-import { permissions } from "../config.js"
+import { DELETE_KEY, permissions, SHARE_KEY } from "../config.js"
 import { contextOf, type Disk, diskFor, tokenOf, withDisk } from "../context.js"
 import { IDENTITY } from "../identity.js"
-import { type DiskFile, diskPath, PAGE, skipReason } from "../yandex/source.js"
-import { SERVICE } from "../yandex/transport.js"
+import { type DiskFile, diskPath, PAGE, skipReason, trashPath } from "../yandex/source.js"
 
 const CLI = IDENTITY.command
-/** The key every overwrite and permanent delete also checks, as the api group's `deletingFlags` do. */
-export const DELETE_KEY = "files.delete"
-/** A public link opens the file to anyone who has it. */
-export const SHARE_KEY = "files.share"
-
-const Link = v.object({ href: v.string(), method: v.optional(v.string()) })
-const Answer = v.optional(Link)
-const PublicUrl = v.object({ public_url: v.optional(v.string()) })
-
-/** A 202 names the operation the Disk goes on with; the answer gives its id to check with `api`. */
-const outcomeOf = (link: v.InferOutput<typeof Answer>) => {
-  const id = link?.href.match(/\/operations\/([^/?]+)/u)?.[1]
-  return id ? { status: "in-progress", disk_operation: id } : { status: "done" }
-}
 
 const row = (file: DiskFile) => ({
   id: file.id,
@@ -109,6 +93,7 @@ const listCommand = () =>
   annotate(new Command("list"), {
     effects: REMOTE_READ,
     offline: false,
+    output: { entity: "document", view: "disk" },
     examples: [`${CLI} personal files list`, `${CLI} personal files list --folder /Documents --json`],
   })
     .description("list what a Disk folder holds, live, a page at a time")
@@ -138,6 +123,7 @@ const showCommand = () =>
   annotate(new Command("show"), {
     effects: REMOTE_READ,
     offline: false,
+    output: { entity: "document", view: "disk" },
     examples: [`${CLI} personal files show /plan.pdf`],
   })
     .description("show one file or folder on the Disk, live")
@@ -155,6 +141,7 @@ const downloadCommand = () =>
     annotate(new Command("download"), {
       effects: FETCH,
       offline: false,
+      output: { entity: "document", view: "disk_text" },
       examples: [
         `${CLI} personal files download /notes.md --json`,
         `${CLI} personal files download /plan.pdf --output ./plan.pdf`,
@@ -200,7 +187,7 @@ const exists = (path: string) =>
   )
 
 const outputError = (error: unknown) => {
-  const code = (error as NodeJS.ErrnoException).code
+  const code = error instanceof Error && "code" in error ? error.code : undefined
   if (code === "EEXIST")
     return new CliError("validation_error", "output file already exists; add --replace or choose another path", {
       param: "--output",
@@ -216,14 +203,16 @@ const outputError = (error: unknown) => {
  * that would overwrite it.
  */
 const saveTo = async (path: string, response: Response, replace: boolean): Promise<number> => {
+  if (!response.body) throw new CliError("invalid_response", "the download answered with no file")
   const temporary = join(dirname(path), `.${basename(path)}.${randomUUID()}.part`)
   let size = 0
   try {
     await pipeline(
-      Readable.fromWeb(response.body as import("node:stream/web").ReadableStream),
-      async function* (chunks) {
+      // The DOM's ReadableStream type and node's are the same object at run time, but TypeScript keeps them apart.
+      Readable.fromWeb(response.body as import("node:stream/web").ReadableStream<Uint8Array>),
+      async function* (chunks: AsyncIterable<Uint8Array>) {
         for await (const chunk of chunks) {
-          size += (chunk as Uint8Array).length
+          size += chunk.length
           yield chunk
         }
       },
@@ -260,53 +249,18 @@ const uploadCommand = () =>
       local: string,
       args: { folder?: string; name?: string; replace?: boolean; allowAnyFile?: boolean },
     ) {
-      const { env, environment } = contextOf(this)
-      const { signal } = environment
+      const { env } = contextOf(this)
       // A path an agent was talked into naming (an SSH key, a browser profile) is refused here, as messengers do.
       const upload = await readUpload("file", local, { app: IDENTITY, env, anyFile: args.allowAnyFile === true })
       const target = diskPath(
         posix.join(diskPath(args.folder ?? "/").replace(/^disk:/u, ""), args.name ?? basename(local)),
       )
-      await write(this, args.replace ? [DELETE_KEY] : [], async (disk) => {
-        // The link lives 30 minutes and takes the bytes without the token (https://yandex.ru/dev/disk-api/doc/en/reference/upload).
-        const link = await disk.api.send(
-          {
-            method: "GET",
-            path: "disk/resources/upload",
-            query: { path: target, overwrite: String(args.replace === true) },
-          },
-          Link,
-        )
-        // Built before the request: a local file that changed size fails here, before anything is sent.
-        const body = await uploadBlob(upload.source)
-        let response: Response
-        try {
-          response = await disk.links(link.href, { method: "PUT", body, ...(signal ? { signal } : {}) })
-        } catch (error) {
-          // Only a request that never left is safe to call failed; the bytes may have landed otherwise (WC-LIFE-9).
-          if (error instanceof CliError && error.details.sent === false) throw error
-          throw new CliError(
-            "outcome_unknown",
-            `${SERVICE} did not answer the upload; check the file before sending it again`,
-            {
-              retryable: false,
-            },
-          )
-        }
-        if (response.status === 413)
-          throw new CliError("validation_error", `${SERVICE} refuses a file this large for this account`)
-        if (response.status === 507) throw new CliError("validation_error", `the ${SERVICE} is full`)
-        if (response.status >= 400 && response.status < 500)
-          throw new CliError("validation_error", `${SERVICE} refused the upload (HTTP ${response.status})`, {
-            status: response.status,
-          })
-        if (!response.ok)
-          throw new CliError("outcome_unknown", `the ${SERVICE} upload ended with HTTP ${response.status}`, {
-            status: response.status,
-            retryable: false,
-          })
-        return { path: target, status: response.status === 202 ? "in-progress" : "done" }
-      })
+      // Built before any request: a local file that changed size fails here, before anything is sent.
+      const body = await uploadBlob(upload.source)
+      await write(this, args.replace ? [DELETE_KEY] : [], async (disk) => ({
+        path: target,
+        ...(await disk.upload(target, body, args.replace === true)),
+      }))
     })
 
 const transfer = (name: "copy" | "move") =>
@@ -332,45 +286,41 @@ const transfer = (name: "copy" | "move") =>
           args.name ?? posix.basename(source.replace(/^disk:/u, "")),
         ),
       )
-      await write(this, args.replace ? [DELETE_KEY] : [], async (disk) => {
-        const link = await disk.api.send(
-          {
-            method: "POST",
-            path: `disk/resources/${name}`,
-            query: { from: source, path: target, overwrite: args.replace ? "true" : "false" },
-          },
-          Answer,
-        )
-        return { from: source, path: target, ...outcomeOf(link) }
-      })
+      await write(this, args.replace ? [DELETE_KEY] : [], async (disk) => ({
+        from: source,
+        path: target,
+        ...(await disk.transfer(name, source, target, args.replace === true)),
+      }))
     })
 
+/** A write of one path: the command turns the argument into the API's path, then asks the Disk to act on it. */
 const simple = (
   name: string,
   description: string,
-  request: (path: string) => {
-    method: "PUT" | "DELETE"
-    path: string
-    query: Record<string, string>
-    body?: Record<string, unknown>
+  {
+    argument = PATH,
+    example,
+    pathOf = diskPath,
+    extra = [],
+    act,
+  }: {
+    argument?: string
+    example: string
+    pathOf?: (input: string) => string
+    extra?: readonly string[]
+    act: (disk: Disk, path: string) => Promise<object>
   },
-  extra: readonly string[] = [],
-  after?: (disk: Disk, path: string) => Promise<object>,
 ) =>
   annotate(new Command(name), {
     effects: REMOTE_WRITE,
     offline: false,
-    examples: [`${CLI} personal files ${name} /Documents/old.pdf`],
+    examples: [`${CLI} personal files ${name} ${example}`],
   })
     .description(description)
-    .argument("<path>", name === "restore" ? "its path in the trash, like trash:/old.pdf" : PATH)
-    .action(async function (this: Command, path: string) {
-      await write(this, extra, async (disk) => {
-        const sent = request(path)
-        const link = await disk.api.send(sent, Answer)
-        const target = sent.query.path as string
-        return { path: target, ...outcomeOf(link), ...(after ? await after(disk, target) : {}) }
-      })
+    .argument("<path>", argument)
+    .action(async function (this: Command, input: string) {
+      const path = pathOf(input)
+      await write(this, extra, async (disk) => ({ path, ...(await act(disk, path)) }))
     })
 
 export const filesCommand = (): Command =>
@@ -383,50 +333,42 @@ export const filesCommand = (): Command =>
     .addCommand(transfer("copy"))
     .addCommand(transfer("move"))
     .addCommand(
-      simple("create", "create a folder on the Disk at this path", (path) => ({
-        method: "PUT",
-        path: "disk/resources",
-        query: { path: diskPath(path) },
-      })),
+      simple("create", "create a folder on the Disk at this path", {
+        example: "/Documents/Reports",
+        act: (disk, path) => disk.createFolder(path),
+      }),
     )
     .addCommand(
-      simple("delete", "move a file or folder to the Disk's trash; files restore brings it back", (path) => ({
-        method: "DELETE",
-        path: "disk/resources",
-        query: { path: diskPath(path), permanently: "false" },
-      })),
+      simple("delete", "move a file or folder to the Disk's trash; files restore brings it back", {
+        example: "/Documents/old.pdf",
+        act: (disk, path) => disk.trash(path),
+      }),
     )
     .addCommand(
-      simple("restore", "bring a file or folder back from the Disk's trash", (path) => ({
-        method: "PUT",
-        path: "disk/trash/resources/restore",
-        query: { path: diskPath(path.replace(/^trash:/u, "")).replace(/^disk:/u, "trash:") },
-      })),
+      simple("restore", "bring a file or folder back from the Disk's trash", {
+        argument: "its path in the trash, like trash:/old.pdf",
+        example: "trash:/old.pdf",
+        pathOf: trashPath,
+        act: (disk, path) => disk.restore(path),
+      }),
     )
     .addCommand(
-      simple(
-        "publish",
-        "open a file or folder to anyone with its public link; asks as files.share does",
-        // The spec marks the body as required; an empty one keeps Yandex's default settings.
-        (path) => ({ method: "PUT", path: "disk/resources/publish", query: { path: diskPath(path) }, body: {} }),
-        [SHARE_KEY],
-        // The owner asked for the link to hand it on; it is answered once and never kept.
-        // The link exists once the publish answered; a failed read of it leaves public_url null, not a failure.
-        async (disk, path) => ({
-          public_url: await disk.api
-            .send({ method: "GET", path: "disk/resources", query: { path, fields: "public_url" } }, PublicUrl)
-            .then(
-              (answer) => answer.public_url ?? null,
-              () => null,
-            ),
-        }),
-      ),
+      simple("publish", "open a file or folder to anyone with its public link; asks as files.share does", {
+        example: "/Documents/plan.pdf",
+        extra: [SHARE_KEY],
+        // The owner asked for the link to hand it on; it is answered once and never kept. When it cannot be read
+        // back, the key is left out: the link exists, but its address is not known (WC-OUT-13).
+        act: async (disk, path) => {
+          const done = await disk.publish(path)
+          const url = await disk.publicUrl(path)
+          return { ...done, ...(url === undefined ? {} : { public_url: url }) }
+        },
+      }),
     )
     .addCommand(
-      simple(
-        "unpublish",
-        "close a file's or folder's public link; asks as files.share does",
-        (path) => ({ method: "PUT", path: "disk/resources/unpublish", query: { path: diskPath(path) } }),
-        [SHARE_KEY],
-      ),
+      simple("unpublish", "close a file's or folder's public link; asks as files.share does", {
+        example: "/Documents/plan.pdf",
+        extra: [SHARE_KEY],
+        act: (disk, path) => disk.unpublish(path),
+      }),
     )

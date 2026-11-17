@@ -107,3 +107,23 @@ it("a public link asks by the share key", async () => {
   expect(ran.json()).toMatchObject({ error: { code: "permission_error" } })
   expect(service.calls).toEqual([])
 })
+
+it.each([
+  ["resources-copy", "files.copy"],
+  ["resources-move", "files.move"],
+  ["resources-create", "files.create"],
+  ["resources-publish", "files.publish"],
+  ["resources-unpublish", "files.unpublish"],
+  ["trash-resources-restore", "files.restore"],
+])("api %s checks %s, as the files command that does the same, in the run and in --dry-run", async (command, key) => {
+  withPermissions({ api: "allow", ...allowed(), [key]: "deny" })
+  const service = fake()
+  const call = ["personal", "api", command, ...argsOf(operationOf(command)), "--json"]
+  expect((await runCli(call, { service })).json()).toMatchObject({
+    error: { code: "permission_error", details: { permission: key } },
+  })
+  expect((await runCli([...call, "--dry-run"], { service })).json()).toMatchObject({
+    error: { code: "permission_error", details: { permission: key } },
+  })
+  expect(service.calls).toEqual([])
+})
