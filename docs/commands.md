@@ -125,7 +125,7 @@ ydisk folders add <folder>
 |---|---|---|
 | `folder` | required | Disk path to add, like /Documents; its id to remove. |
 
-**Example:** `ydisk personal folders add FOLDER_ID`
+**Example:** `ydisk personal folders add /Documents`
 
 ### `ydisk folders list`
 
