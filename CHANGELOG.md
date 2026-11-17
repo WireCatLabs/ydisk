@@ -2,6 +2,13 @@
 
 Notable changes to `@wirecat/yandex-disk-cli`. One section per version, newest first.
 
+## 0.1.1 — 18.11.2026
+
+### Fixed
+
+- Published from GitHub Actions with npm provenance, so WireCat Desktop installs it: Desktop refuses a built-in tool's
+  release that its own repository's workflow did not build, and 0.1.0 was published from a computer.
+
 ## 0.1.0 — 17.11.2026
 
 ### Added
