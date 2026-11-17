@@ -1,0 +1,13 @@
+{
+  "session status": "read",
+  "session list": "read",
+  "api comments-list": "read",
+  "api comments-create": "write",
+  "api comments-get": "read",
+  "api comments-update": "write",
+  "api comments-delete": "write",
+  "comments list": "read",
+  "comments show": "read",
+  "comments create": "write",
+  "comments update": "write"
+}

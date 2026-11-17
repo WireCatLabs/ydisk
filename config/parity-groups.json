@@ -1,0 +1,8 @@
+[
+  {
+    "name": "ydisk",
+    "members": ["ydisk", "tg", "max", "memo", "drive", "zm", "wa"],
+    "covers": ["commands", "upgrade"],
+    "differences": []
+  }
+]

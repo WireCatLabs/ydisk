@@ -1,0 +1,18 @@
+{
+  "version": "0.2",
+  "import": ["./config/wirecat/cspell.json"],
+  "ignorePaths": ["docs/commands.md", "docs/dev/**"],
+  "words": [
+    "ydisk",
+    "whatsapp-cli",
+    "tg-cli",
+    "max-cli",
+    "mail-cli",
+    "notion-cli",
+    "drive-cli",
+    "gcal-cli",
+    "zoom-cli",
+    "cli-memo",
+    "bitrix24-cli"
+  ]
+}
