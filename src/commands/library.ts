@@ -29,6 +29,7 @@ const WORDS: DocumentWords = {
     documentArgument: "file id (resource_id) or a search hit's document: ref",
     folders: "choose the Disk folders sync copies",
     folderArgument: "Disk path to add, like /Documents; its id to remove",
+    folderToAdd: "/Documents",
     syncLimit: "how many files to read from Yandex Disk in this run",
   },
 }
