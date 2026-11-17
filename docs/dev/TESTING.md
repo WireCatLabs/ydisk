@@ -23,16 +23,15 @@ How the tests run, and what they never touch. The rules are the handbook's
 - `src/mcp.test.ts` pins `contracts/mcp-catalogue.json`: this CLI's own commands an agent can find over MCP, each a
   read or a write, from cli-core's `ownCatalogue`. What cli-core mounts is left out, since cli-core pins it, so a
   cli-core release does not rewrite the file. Pin a shared command here only when this CLI changes it on purpose.
-- `pnpm contracts:upgrade` does not exist yet, and `.github/workflows/ci.yml` skips the step. It needs both local
-  state of the CLI's own (a store, a sync cursor, any other file its code writes and reads back) and a published
-  version to upgrade from; the skeleton has neither, and the config file and run records are cli-core's
-  ([WC-TEST-14](../../node_modules/@wirecat/cli-base/docs/standards/testing.md)). Once the CLI keeps such state and its
-  first version is on npm, add `contracts/upgrade.json` with `"previous": {}`: `cli-contract` then installs the newest
-  published version at or below this one by itself
-  ([cli-testing's contracts guide](https://github.com/WireCatLabs/cli-testing/blob/main/docs/ci/CONTRACTS.md)), so no
-  version is kept by hand. Seed the state with the previous version's public commands only, never by importing its
-  internal modules, which move from one release to the next. Then add the script, which runs
-  `cli-contract contracts/upgrade.json`, and remove the skip.
+- `pnpm contracts:upgrade` checks that this build reads what the previous release wrote
+  ([WC-TEST-14](../../node_modules/@wirecat/cli-base/docs/standards/testing.md)). `contracts/previous/` installs that
+  release from npm (`@wirecat/previous-cli`, now `@wirecat/yandex-disk-cli@0.1.0`). `contracts/seed.mjs` loads its own
+  modules and its own cli-core, signs nobody in, and saves one synced file and a note into the synthetic store, as
+  `ydisk <profile> sync` would, with the profile's folder choice and sync state. `contracts/upgrade.json` then lists
+  the documents, reads one, the status, search and notes with that release and with this build. After a release, move
+  the baseline: the version in `contracts/previous/package.json` and in `upgrade.json`'s `previous.version`, then
+  `pnpm --dir contracts/previous install`. A cli-core bump that migrates the store makes this build print one line on
+  stderr the first time it opens the old store; the cases allow exactly that line as `diagnosticPattern`.
 - `pnpm smoke` installs the packed package into a temporary folder and runs it offline.
 - `pnpm audit:commands` audits the command tree beside the latest published WireCat CLIs.
 
