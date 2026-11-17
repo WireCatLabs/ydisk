@@ -53,11 +53,11 @@ ydisk commands info [path]
 
 ## `ydisk session`
 
-keep this profile's Example Comments token in the OS keyring
+keep this profile's Yandex Disk token in the OS keyring
 
 ### `ydisk session start`
 
-sign this profile in: the Example Comments API token is asked hidden or read from stdin, never taken as an argument, checked against the service, and only then kept in the keyring, or in a private file
+sign this profile in: the Yandex Disk API token is asked hidden or read from stdin, never taken as an argument, checked against the service, and only then kept in the keyring, or in a private file
 
 **Changes something on this computer only.**
 
@@ -73,7 +73,7 @@ ydisk session start [options]
 
 ### `ydisk session status`
 
-show where this profile's token comes from: YDISK_TOKEN, the keyring or a file, never the token; --check asks Example Comments whose token it is
+show where this profile's token comes from: YDISK_TOKEN, the keyring or a file, never the token; --check asks Yandex Disk whose token it is
 
 ```sh
 ydisk session status [options]
@@ -81,13 +81,13 @@ ydisk session status [options]
 
 | Option | What it does |
 |---|---|
-| `--check` | ask Example Comments whether the token still works, and whose it is. |
+| `--check` | ask Yandex Disk whether the token still works, and whose it is. |
 
 **Example:** `ydisk personal session status`, `ydisk personal session status --check --json`
 
 ### `ydisk session end`
 
-forget this profile's token on this computer; the token itself stays valid in Example Comments
+forget this profile's token on this computer; the token itself stays valid in Yandex Disk
 
 **Changes something on this computer only.**
 
@@ -106,6 +106,1046 @@ ydisk session list
 ```
 
 **Example:** `ydisk session list`, `ydisk session list --json`
+
+## `ydisk folders`
+
+choose the Disk folders sync copies
+
+### `ydisk folders add`
+
+import a folder and everything under it on the next sync
+
+**Changes something on this computer only.**
+
+```sh
+ydisk folders add <folder>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `folder` | required | Disk path to add, like /Documents; its id to remove. |
+
+**Example:** `ydisk personal folders add FOLDER_ID`
+
+### `ydisk folders list`
+
+list the folder ids sync imports
+
+```sh
+ydisk folders list [query]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `query` | optional | field:value terms that narrow the list — the fields are below. |
+
+**Returns:** selected folder — id; every field: ydisk commands info folders list
+
+**Example:** `ydisk personal folders list`
+
+### `ydisk folders browse`
+
+list Disk folders one level at a time, live, to choose one for folders add
+
+```sh
+ydisk folders browse [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--folder <folder>` | the Disk folder to list inside, by its path; the top of the Disk without it. |
+| `--cursor <cursor>` | go on from where the last page stopped; page.next gives it, with the same --folder. |
+
+**Example:** `ydisk personal folders browse`, `ydisk personal folders browse --folder /Work --json`
+
+### `ydisk folders remove`
+
+stop importing a folder; the next sync drops its documents
+
+**Changes something on this computer only.**
+
+```sh
+ydisk folders remove <folder>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `folder` | required | Disk path to add, like /Documents; its id to remove. |
+
+**Example:** `ydisk personal folders remove FOLDER_ID`
+
+## `ydisk sync`
+
+import what changed in the chosen folders, and finish an unfinished sync; one sync walks about 10000 entries under the chosen folders, saves where it stopped, and the next sync goes on from there
+
+**Changes something on this computer only.**
+
+```sh
+ydisk sync [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--limit <n>` | how many files to read from Yandex Disk in this run. Default: `200`. |
+| `--rescan` | read every chosen folder again instead of only what changed; each --rescan starts the walk over, so run it once and continue with a plain sync. |
+| `--embed` | also index pending text for meaning search, with a model already downloaded. |
+
+**Example:** `ydisk personal sync`, `ydisk personal sync --rescan --limit 500`
+
+## `ydisk status`
+
+show the last sync, imported documents and pending work
+
+```sh
+ydisk status
+```
+
+**Example:** `ydisk personal status`
+
+## `ydisk documents`
+
+read the Yandex Disk files synced to this computer
+
+### `ydisk documents list`
+
+list the synced files with their Disk paths
+
+```sh
+ydisk documents list [query] [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `query` | optional | field:value terms that narrow the list — the fields are below. |
+
+| Option | What it does |
+|---|---|
+| `--limit <n>` | how many documents to return. Default: `50`. |
+| `--page <n>` | which page to return. Default: `1`. |
+
+**Next usually:** `ydisk documents show <document>`, `ydisk documents context <document>`, `ydisk tags list <document> [query]`
+
+**Example:** `ydisk personal documents list`, `ydisk personal documents list tag:budget`, `ydisk personal documents list person:PERSON_UID --limit 10`
+
+### `ydisk documents show`
+
+show an imported document's text, tabs and metadata
+
+```sh
+ydisk documents show <document>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | file id (resource_id) or a search hit's document: ref. |
+
+**Example:** `ydisk personal documents show DOC_ID`, `ydisk personal documents show document:42 --offline`
+
+### `ydisk documents export`
+
+write an imported document to a new Markdown file
+
+**Changes something on this computer only.**
+
+```sh
+ydisk documents export <document> [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | file id (resource_id) or a search hit's document: ref. |
+
+| Option | What it does |
+|---|---|
+| `--output <file>` | path of the Markdown file to write; an existing file is refused. |
+
+**Example:** `ydisk personal documents export DOC_ID --output notes.md`
+
+### `ydisk documents context`
+
+show a document with its tags, relationships, notes, memories and editors
+
+```sh
+ydisk documents context <document>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+
+**Example:** `ydisk personal documents context DOC_ID`
+
+## `ydisk search`
+
+search imported documents by words, and by meaning when indexed
+
+```sh
+ydisk search <query> [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `query` | required | words to look for, and fields such as tag: and date: that every hit must match. |
+
+| Option | What it does |
+|---|---|
+| `--limit <n>` | how many results to return. Default: `20`. |
+| `--page <n>` | which page to return. Default: `1`. |
+| `--exact` | match the words exactly: no word forms, no meaning. |
+
+**Example:** `ydisk personal search budget`, `ydisk personal search "quarterly plan" --exact --limit 5`
+
+## `ydisk catalog`
+
+browse stored Yandex Disk files and folders offline
+
+### `ydisk catalog import`
+
+put cached file and folder metadata into the shared database
+
+**Changes something on this computer only.**
+
+```sh
+ydisk catalog import
+```
+
+**Example:** `ydisk personal catalog import --offline`
+
+### `ydisk catalog show`
+
+show stored metadata and the stable file or folder reference
+
+```sh
+ydisk catalog show <file>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `file` | required | Yandex Disk file or folder id, or its URL. |
+
+**Next usually:** `ydisk documents show <document>`, `ydisk documents context <document>`, `ydisk tags list <document> [query]`
+
+**Example:** `ydisk personal catalog show FILE_ID --offline`
+
+### `ydisk catalog list`
+
+list cached files and folders using metadata queries
+
+```sh
+ydisk catalog list [query] [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `query` | optional | metadata query: kind, mime, name, parent, person, tag; AND, OR, NOT. |
+
+| Option | What it does |
+|---|---|
+| `--limit <n>` | how many entries to return (at most 1000). Default: `50`. |
+| `--page <n>` | which page to return. Default: `1`. |
+
+**Next usually:** `ydisk documents show <document>`, `ydisk documents context <document>`, `ydisk tags list <document> [query]`
+
+**Example:** `ydisk personal catalog list "parent:FOLDER_ID AND kind:file" --offline`
+
+### `ydisk catalog search`
+
+search cached names, descriptions, types and observed people
+
+```sh
+ydisk catalog search <query> [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `query` | required | metadata query: kind, mime, name, parent, person, tag; AND, OR, NOT. |
+
+| Option | What it does |
+|---|---|
+| `--limit <n>` | how many entries to return (at most 1000). Default: `50`. |
+| `--page <n>` | which page to return. Default: `1`. |
+
+**Next usually:** `ydisk documents show <document>`, `ydisk documents context <document>`, `ydisk tags list <document> [query]`
+
+**Example:** `ydisk personal catalog search "budget AND person:Rin*" --offline`
+
+### `ydisk catalog tree`
+
+show the cached hierarchy below a folder or all selected roots
+
+```sh
+ydisk catalog tree [folder] [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `folder` | optional | Yandex Disk folder id or URL; defaults to the explicitly selected profile's roots. |
+
+| Option | What it does |
+|---|---|
+| `--depth <n>` | maximum descendant depth, from 0 to 50. Default: `5`. |
+
+**Example:** `ydisk personal catalog tree --offline`, `ydisk personal catalog tree FOLDER_ID --depth 3 --offline`
+
+### `ydisk catalog tags`
+
+add owner tags to cached files or folders
+
+#### `ydisk catalog tags list`
+
+list local tags on a cached file or folder
+
+```sh
+ydisk catalog tags list <file> [query]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `file` | required | Yandex Disk file or folder id, or its URL. |
+| `query` | optional | field:value terms that narrow the list — the fields are below. |
+
+**Returns:** document tag — tag; every field: ydisk commands info catalog tags list
+
+**Example:** `ydisk personal catalog tags list FOLDER_ID --offline`
+
+#### `ydisk catalog tags add`
+
+add local tags on a cached file or folder
+
+**Changes something on this computer only.**
+
+```sh
+ydisk catalog tags add <file> <tags>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `file` | required | Yandex Disk file or folder id, or its URL. |
+| `tags` | required | local tag names. |
+
+**Example:** `ydisk personal catalog tags add FOLDER_ID project --offline`
+
+#### `ydisk catalog tags remove`
+
+remove local tags on a cached file or folder
+
+**Changes something on this computer only.**
+
+```sh
+ydisk catalog tags remove <file> <tags>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `file` | required | Yandex Disk file or folder id, or its URL. |
+| `tags` | required | local tag names. |
+
+**Example:** `ydisk personal catalog tags remove FOLDER_ID project --offline`
+
+## `ydisk tags`
+
+label imported documents; labels survive a sync
+
+### `ydisk tags list`
+
+list a document's tags
+
+```sh
+ydisk tags list <document> [query]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `query` | optional | field:value terms that narrow the list — the fields are below. |
+
+**Returns:** document tag — tag; every field: ydisk commands info tags list
+
+**Example:** `ydisk personal tags list DOC_ID`
+
+### `ydisk tags add`
+
+tag a document
+
+**Changes something on this computer only.**
+
+```sh
+ydisk tags add <document> <tags>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `tags` | required | one or more tags. |
+
+**Example:** `ydisk personal tags add DOC_ID budget q3`
+
+### `ydisk tags remove`
+
+untag a document
+
+**Changes something on this computer only.**
+
+```sh
+ydisk tags remove <document> <tags>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `tags` | required | one or more tags. |
+
+**Example:** `ydisk personal tags remove DOC_ID budget q3`
+
+## `ydisk relationships`
+
+connect a document to people, projects, notes and other references
+
+### `ydisk relationships list`
+
+list a document's relationships
+
+```sh
+ydisk relationships list <document> [query]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `query` | optional | field:value terms that narrow the list — the fields are below. |
+
+**Returns:** document relationship — id, from, to, kind, role, confirmed, origin; every field: ydisk commands info relationships list
+
+**Example:** `ydisk personal relationships list DOC_ID`
+
+### `ydisk relationships add`
+
+connect a document to another reference
+
+**Changes something on this computer only.**
+
+```sh
+ydisk relationships add <document> <reference> [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `reference` | required | what it connects to, such as person:<uid>, project:<id> or note:<id>. |
+
+| Option | What it does |
+|---|---|
+| `--kind <kind>` | how the two relate. One of: `links-to`, `about`, `evidence`, `created-from`, `related-to`, `assigned-to`. Default: `related-to`. |
+| `--role <role>` | the part the reference plays, in a word or two. |
+| `--reason <text>` | why the two are connected. |
+
+**Example:** `ydisk personal relationships add DOC_ID project:PROJECT_ID --kind about`, `ydisk personal relationships add DOC_ID person:PERSON_UID --kind assigned-to --role reviewer`
+
+### `ydisk relationships remove`
+
+remove one of a document's relationships
+
+**Changes something on this computer only.**
+
+```sh
+ydisk relationships remove <document> <relationship-id>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `relationship-id` | required | id, as relationships list prints it. |
+
+**Example:** `ydisk personal relationships remove DOC_ID LINK_ID`
+
+## `ydisk notes`
+
+write notes about an imported document
+
+### `ydisk notes add`
+
+write a note about a document
+
+**Changes something on this computer only.**
+
+```sh
+ydisk notes add <document> <text> [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `text` | required | the note's text. |
+
+| Option | What it does |
+|---|---|
+| `--title <title>` | a title for the note. |
+
+**Returns:** note — ref, id, source, folder_id, path, title, text, revision, and 15 more; every field: ydisk commands info notes add
+
+**Next usually:** `ydisk notes show <document> <note>`, `ydisk notes edit <document> <note> <text>`, `ydisk notes remove <document> <note>`
+
+**Example:** `ydisk personal notes add DOC_ID "Check the numbers" --title Review`
+
+### `ydisk notes list`
+
+list a document's notes
+
+```sh
+ydisk notes list <document> [query] [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `query` | optional | field:value terms that narrow the list — the fields are below. |
+
+| Option | What it does |
+|---|---|
+| `--limit <n>` | how many notes to return. Default: `50`. |
+| `--page <n>` | which page to return. Default: `1`. |
+
+**Returns:** note — ref, id, source, folder_id, path, title, text, revision, and 15 more; every field: ydisk commands info notes list
+
+**Next usually:** `ydisk notes show <document> <note>`, `ydisk notes edit <document> <note> <text>`, `ydisk notes remove <document> <note>`
+
+**Example:** `ydisk personal notes list DOC_ID`, `ydisk personal notes list DOC_ID text:review --limit 10`
+
+### `ydisk notes show`
+
+show one note
+
+```sh
+ydisk notes show <document> <note>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `note` | required | note:<id> reference, as notes list prints it. |
+
+**Returns:** note — ref, id, source, folder_id, path, title, text, revision, and 15 more; every field: ydisk commands info notes show
+
+**Next usually:** `ydisk notes edit <document> <note> <text>`, `ydisk notes remove <document> <note>`
+
+**Example:** `ydisk personal notes show DOC_ID note:NOTE_ID`
+
+### `ydisk notes edit`
+
+replace a note's text
+
+**Changes something on this computer only.**
+
+```sh
+ydisk notes edit <document> <note> <text> [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `note` | required | note:<id> reference, as notes list prints it. |
+| `text` | required | the note's new text. |
+
+| Option | What it does |
+|---|---|
+| `--revision <n>` | revision from notes show; a newer note is not overwritten. |
+
+**Returns:** note — ref, id, source, folder_id, path, title, text, revision, and 15 more; every field: ydisk commands info notes edit
+
+**Next usually:** `ydisk notes show <document> <note>`, `ydisk notes remove <document> <note>`
+
+**Example:** `ydisk personal notes edit DOC_ID note:NOTE_ID "Numbers checked" --revision 2`
+
+### `ydisk notes remove`
+
+delete one note
+
+**Changes something on this computer only.**
+
+```sh
+ydisk notes remove <document> <note>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `note` | required | note:<id> reference, as notes list prints it. |
+
+**Example:** `ydisk personal notes remove DOC_ID note:NOTE_ID`
+
+## `ydisk memories`
+
+keep what was learned from a document, with evidence; an agent's stay proposed
+
+### `ydisk memories add`
+
+record a memory about a document
+
+**Changes something on this computer only.**
+
+```sh
+ydisk memories add <document> <text> [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `text` | required | what to remember. |
+
+| Option | What it does |
+|---|---|
+| `--scope <scope>` | whose memory it is: personal or work. One of: `personal`, `work`. |
+| `--kind <kind>` | what kind of memory it is. One of: `summary`, `digest`, `preference`. Default: `summary`. |
+| `--supersedes <ref>` | a memory:<id> about the same document that this one replaces. |
+
+**Example:** `ydisk personal memories add DOC_ID "The team prefers async reviews" --scope work --kind preference`
+
+### `ydisk memories list`
+
+list a document's memories
+
+```sh
+ydisk memories list <document> [query] [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `query` | optional | field:value terms that narrow the list — the fields are below. |
+
+| Option | What it does |
+|---|---|
+| `--limit <n>` | how many memories to return. Default: `50`. |
+
+**Returns:** memory — ref, id, kind, text, subject, author, model, confidence, and 13 more; every field: ydisk commands info memories list
+
+**Example:** `ydisk personal memories list DOC_ID scope:work`, `ydisk personal memories list DOC_ID kind:preference status:confirmed`
+
+### `ydisk memories show`
+
+show one memory
+
+```sh
+ydisk memories show <document> <memory>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `memory` | required | memory:<id> reference, as memories list prints it. |
+
+**Example:** `ydisk personal memories show DOC_ID memory:MEMORY_ID`
+
+### `ydisk memories confirm`
+
+confirm a proposed memory as true
+
+**Changes something on this computer only.**
+
+```sh
+ydisk memories confirm <document> <memory>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `memory` | required | memory:<id> reference, as memories list prints it. |
+
+**Example:** `ydisk personal memories confirm DOC_ID memory:MEMORY_ID`
+
+### `ydisk memories stale`
+
+mark a memory as out of date
+
+**Changes something on this computer only.**
+
+```sh
+ydisk memories stale <document> <memory>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `memory` | required | memory:<id> reference, as memories list prints it. |
+
+**Example:** `ydisk personal memories stale DOC_ID memory:MEMORY_ID`
+
+### `ydisk memories search`
+
+search a document's memories by words
+
+```sh
+ydisk memories search <document> <query>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `query` | required | words to look for, and scope:personal or scope:work — the fields are below. |
+
+**Returns:** memory — ref, id, kind, text, subject, author, model, confidence, and 13 more; every field: ydisk commands info memories search
+
+**Example:** `ydisk personal memories search DOC_ID reviews scope:work`, `ydisk personal memories search DOC_ID "async reviews"`
+
+### `ydisk memories extract`
+
+send a document's text to the model and show the memories it proposes
+
+**Changes something in the service.**
+
+```sh
+ydisk memories extract <document> [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+
+| Option | What it does |
+|---|---|
+| `--scope <scope>` | whose memories they become: personal or work. One of: `personal`, `work`. |
+| `--tab <id>` | send only this tab of the document. |
+| `--yes` | save the proposals, each with its quote and the document's version. |
+
+**Example:** `ydisk personal memories extract DOC_ID --scope work`, `ydisk personal memories extract DOC_ID --scope work --yes`
+
+## `ydisk facts`
+
+what happened, as a document shows it; an agent's stay proposed until confirmed
+
+### `ydisk facts add`
+
+record a fact a document shows
+
+**Changes something on this computer only.**
+
+```sh
+ydisk facts add <document> <statement> [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `statement` | required | the fact, in one sentence. |
+
+| Option | What it does |
+|---|---|
+| `--type <type>` | what kind of fact it is. One of: `fact`, `statement`, `question`, `decision`, `promise`. Default: `fact`. |
+| `--scope <scope>` | whose fact it is: personal or work. One of: `personal`, `work`. |
+| `--supersedes <ref>` | a decision only: the decision this one replaces. |
+| `--occurred-time <time>` | when it happened, as the evidence shows, ISO 8601; a time without a zone is read in this computer's zone, a date alone as its midnight. |
+
+**Example:** `ydisk personal facts add DOC_ID "Budget approved" --type decision --scope work`
+
+### `ydisk facts list`
+
+list a document's facts
+
+```sh
+ydisk facts list <document> [query] [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `query` | optional | field:value terms that narrow the list — the fields are below. |
+
+| Option | What it does |
+|---|---|
+| `--limit <n>` | how many facts to return. Default: `50`. |
+
+**Returns:** fact — ref, id, kind, text, status, project, subject, occurred_at, and 14 more; every field: ydisk commands info facts list
+
+**Example:** `ydisk personal facts list DOC_ID status:proposed`, `ydisk personal facts list DOC_ID kind:decision`
+
+### `ydisk facts show`
+
+show one fact
+
+```sh
+ydisk facts show <document> <fact>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `fact` | required | fact:<id> reference, as facts list prints it. |
+
+**Example:** `ydisk personal facts show DOC_ID fact:FACT_ID`
+
+### `ydisk facts confirm`
+
+confirm a proposed fact; a decision it supersedes stops holding
+
+**Changes something on this computer only.**
+
+```sh
+ydisk facts confirm <document> <fact>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `fact` | required | fact:<id> reference, as facts list prints it. |
+
+**Example:** `ydisk personal facts confirm DOC_ID fact:FACT_ID`
+
+### `ydisk facts reverse`
+
+an accepted decision no longer holds, and nothing replaced it
+
+**Changes something on this computer only.**
+
+```sh
+ydisk facts reverse <document> <fact>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `fact` | required | fact:<id> reference, as facts list prints it. |
+
+**Example:** `ydisk personal facts reverse DOC_ID fact:FACT_ID`
+
+## `ydisk identities`
+
+the Yandex Disk accounts seen on a document, and the people they belong to
+
+### `ydisk identities list`
+
+list the people Yandex Disk shows for a document
+
+```sh
+ydisk identities list <document> [query]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `query` | optional | field:value terms that narrow the list — the fields are below. |
+
+**Returns:** document identity — remote_id, provider, role, person; every field: ydisk commands info identities list
+
+**Example:** `ydisk personal identities list DOC_ID`
+
+### `ydisk identities link`
+
+record that a Yandex Disk account belongs to a known person
+
+**Changes something on this computer only.**
+
+```sh
+ydisk identities link <document> <disk-id> <person>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `document` | required | Yandex Disk file or folder id or URL in the local catalog, or a document:<n> ref. |
+| `disk-id` | required | Yandex Disk account id, as identities list prints it. |
+| `person` | required | person:<uid> reference of someone already known. |
+
+**Example:** `ydisk personal identities link DOC_ID DISK_ID person:PERSON_UID`
+
+## `ydisk files`
+
+the files on Yandex Disk, live: list, read, download, upload and change them
+
+### `ydisk files list`
+
+list what a Disk folder holds, live, a page at a time
+
+```sh
+ydisk files list [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--folder <folder>` | the Disk folder to list, by its path; the top of the Disk without it. |
+| `--cursor <cursor>` | go on from where the last page stopped; page.next gives it, with the same --folder. |
+
+**Example:** `ydisk personal files list`, `ydisk personal files list --folder /Documents --json`
+
+### `ydisk files show`
+
+show one file or folder on the Disk, live
+
+```sh
+ydisk files show <path>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `path` | required | Disk path, like /Documents/plan.pdf or disk:/Documents/plan.pdf. |
+
+**Example:** `ydisk personal files show /plan.pdf`
+
+### `ydisk files download`
+
+read a Disk file's text (PDF, docx, xlsx, CSV, TSV, text, Markdown), or with --output save the file itself; the token never goes to the download host
+
+**Changes something on this computer only.**
+
+```sh
+ydisk files download <path> [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `path` | required | Disk path, like /Documents/plan.pdf or disk:/Documents/plan.pdf. |
+
+| Option | What it does |
+|---|---|
+| `--output <file>` | save the file here instead of answering its text. |
+| `--replace` | replace an existing output file. |
+
+**Example:** `ydisk personal files download /notes.md --json`, `ydisk personal files download /plan.pdf --output ./plan.pdf`
+
+### `ydisk files upload`
+
+put a local file on the Disk; --replace replaces one already there and asks as files.delete does. Credential files, browser profiles and the WireCat folders are refused
+
+**Changes something in the service.**
+
+```sh
+ydisk files upload <file> [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `file` | required | local file to upload. |
+
+| Option | What it does |
+|---|---|
+| `--folder <folder>` | the Disk folder to put it in, by its path; the top of the Disk without it. |
+| `--name <name>` | its name on the Disk; the local name without it. |
+| `--replace` | replace a file already at that path. |
+| `--allow-any-file` | send a file from a place that is otherwise refused. |
+
+**Example:** `ydisk personal files upload ./plan.pdf --folder /Documents`
+
+### `ydisk files copy`
+
+copy a file or folder on the Disk into --folder, under --name or its own; --replace replaces what is there and asks as files.delete does
+
+**Changes something in the service.**
+
+```sh
+ydisk files copy <path> [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `path` | required | Disk path, like /Documents/plan.pdf or disk:/Documents/plan.pdf. |
+
+| Option | What it does |
+|---|---|
+| `--folder <folder>` | the Disk folder it goes into, by its path. |
+| `--name <name>` | its name there; its own without it. |
+| `--replace` | replace what is already there. |
+
+**Example:** `ydisk personal files copy /plan.pdf --folder /Archive`
+
+### `ydisk files move`
+
+move a file or folder on the Disk into --folder, under --name or its own; --replace replaces what is there and asks as files.delete does
+
+**Changes something in the service.**
+
+```sh
+ydisk files move <path> [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `path` | required | Disk path, like /Documents/plan.pdf or disk:/Documents/plan.pdf. |
+
+| Option | What it does |
+|---|---|
+| `--folder <folder>` | the Disk folder it goes into, by its path. |
+| `--name <name>` | its name there; its own without it. |
+| `--replace` | replace what is already there. |
+
+**Example:** `ydisk personal files move /plan.pdf --folder /Archive`
+
+### `ydisk files create`
+
+create a folder on the Disk at this path
+
+**Changes something in the service.**
+
+```sh
+ydisk files create <path>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `path` | required | Disk path, like /Documents/plan.pdf or disk:/Documents/plan.pdf. |
+
+**Example:** `ydisk personal files create /Documents/old.pdf`
+
+### `ydisk files delete`
+
+move a file or folder to the Disk's trash; files restore brings it back
+
+**Changes something in the service.**
+
+```sh
+ydisk files delete <path>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `path` | required | Disk path, like /Documents/plan.pdf or disk:/Documents/plan.pdf. |
+
+**Example:** `ydisk personal files delete /Documents/old.pdf`
+
+### `ydisk files restore`
+
+bring a file or folder back from the Disk's trash
+
+**Changes something in the service.**
+
+```sh
+ydisk files restore <path>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `path` | required | its path in the trash, like trash:/old.pdf. |
+
+**Example:** `ydisk personal files restore /Documents/old.pdf`
+
+### `ydisk files publish`
+
+open a file or folder to anyone with its public link; asks as files.share does
+
+**Changes something in the service.**
+
+```sh
+ydisk files publish <path>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `path` | required | Disk path, like /Documents/plan.pdf or disk:/Documents/plan.pdf. |
+
+**Example:** `ydisk personal files publish /Documents/old.pdf`
+
+### `ydisk files unpublish`
+
+close a file's or folder's public link; asks as files.share does
+
+**Changes something in the service.**
+
+```sh
+ydisk files unpublish <path>
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `path` | required | Disk path, like /Documents/plan.pdf or disk:/Documents/plan.pdf. |
+
+**Example:** `ydisk personal files unpublish /Documents/old.pdf`
 
 ## `ydisk api`
 
@@ -251,21 +1291,6 @@ ydisk api resources-copy [options]
 
 **Example:** `ydisk personal api resources-copy --from <value> --path <value>`
 
-### `ydisk api resources-download-link`
-
-Получить ссылку на скачивание файла — read (GET /v1/disk/resources/download)
-
-```sh
-ydisk api resources-download-link [options]
-```
-
-| Option | What it does |
-|---|---|
-| `--path <value>` | Путь к ресурсу. |
-| `--fields <value>` | Список возвращаемых атрибутов. |
-
-**Example:** `ydisk personal api resources-download-link --path <value>`
-
 ### `ydisk api resources-files-list`
 
 Получить список файлов упорядоченный по имени — read (GET /v1/disk/resources/files)
@@ -382,22 +1407,6 @@ ydisk api resources-unpublish [options]
 
 **Example:** `ydisk personal api resources-unpublish --path <value>`
 
-### `ydisk api resources-upload-link`
-
-Получить ссылку для загрузки файла — read (GET /v1/disk/resources/upload)
-
-```sh
-ydisk api resources-upload-link [options]
-```
-
-| Option | What it does |
-|---|---|
-| `--path <value>` | Путь к загружаемому файлу на Диске. |
-| `--fields <value>` | Список возвращаемых атрибутов. |
-| `--overwrite <value>` | Перезаписать существующий файл. |
-
-**Example:** `ydisk personal api resources-upload-link --path <value>`
-
 ### `ydisk api resources-upload-url`
 
 Загрузить файл в Диск по URL — write (POST /v1/disk/resources/upload)
@@ -438,22 +1447,6 @@ ydisk api public-resources-get [options]
 | `--all` | read every page, as the API pages it. |
 
 **Example:** `ydisk personal api public-resources-get --public-key <value>`
-
-### `ydisk api public-resources-download-link`
-
-Получить ссылку на скачивание публичного ресурса — read (GET /v1/disk/public/resources/download)
-
-```sh
-ydisk api public-resources-download-link [options]
-```
-
-| Option | What it does |
-|---|---|
-| `--public-key <value>` | Ключ или публичный URL ресурса. |
-| `--fields <value>` | Список возвращаемых атрибутов. |
-| `--path <value>` | Путь к ресурсу в публичной папке. |
-
-**Example:** `ydisk personal api public-resources-download-link --public-key <value>`
 
 ### `ydisk api public-settings-update`
 
@@ -571,84 +1564,6 @@ ydisk api operations-get [options]
 
 **Example:** `ydisk personal api operations-get --operation-id <value>`
 
-## `ydisk comments`
-
-read and write comments in Example Comments, the sample service
-
-### `ydisk comments list`
-
-list the comments in Example Comments, newest first
-
-```sh
-ydisk comments list [query] [options]
-```
-
-| Argument | | What it is |
-|---|---|---|
-| `query` | optional | field:value terms that narrow the list — the fields are below. |
-
-| Option | What it does |
-|---|---|
-| `--limit <n>` | how many to show. |
-| `--page <n>` | which page, starting at 1. |
-| `--all` | every row, no paging. |
-
-**Returns:** comment — id, text, author, created_at; every field: ydisk commands info comments list
-
-**Example:** `ydisk personal comments list`, `ydisk personal comments list author:u2 --json=id,text`
-
-### `ydisk comments show`
-
-show one comment in Example Comments
-
-```sh
-ydisk comments show <id>
-```
-
-| Argument | | What it is |
-|---|---|---|
-| `id` | required | the comment's id, as list prints it. |
-
-**Returns:** comment — id, text, author, created_at; every field: ydisk commands info comments show
-
-**Example:** `ydisk personal comments show c1`, `ydisk personal comments show c1 --json`
-
-### `ydisk comments create`
-
-post a comment in Example Comments
-
-**Changes something in the service.**
-
-```sh
-ydisk comments create [options]
-```
-
-| Option | What it does |
-|---|---|
-| `--text <text>` | the comment's text. |
-
-**Example:** `ydisk personal comments create --text "Looks good to me"`, `ydisk personal comments create --text "Looks good to me" --dry-run`
-
-### `ydisk comments update`
-
-change the text of your comment in Example Comments
-
-**Changes something in the service.**
-
-```sh
-ydisk comments update <id> [options]
-```
-
-| Argument | | What it is |
-|---|---|---|
-| `id` | required | the comment's id, as list prints it. |
-
-| Option | What it does |
-|---|---|
-| `--text <text>` | the new text. |
-
-**Example:** `ydisk personal comments update c1 --text "Looks good now"`
-
 ## `ydisk doctor`
 
 the state this installation is in, without connecting unless --online
@@ -708,7 +1623,7 @@ ydisk skill show [name] [options]
 
 | Argument | | What it is |
 |---|---|---|
-| `name` | optional | a part of this skill, or a skill shipped for a task: api-comments, api. |
+| `name` | optional | a part of this skill, or a skill shipped for a task: api-disk, api-disk-trash-resources, api-disk-resources, api-disk-public-resources, api-disk-operations-operation-id, api. |
 
 | Option | What it does |
 |---|---|
@@ -758,7 +1673,7 @@ ydisk mcp serve [options]
 
 | Option | What it does |
 |---|---|
-| `--permission <key=level>` | make a permission stricter for this server only, like comments.create=deny; it never loosens the profile; repeat for more keys. |
+| `--permission <key=level>` | make a permission stricter for this server only, like files.delete=deny; it never loosens the profile; repeat for more keys. |
 | `--profiles <names\|all>` | serve several profiles from one server instead of one: names, comma-separated, or all for every profile. |
 | `--http` | serve over HTTP on 127.0.0.1 for ChatGPT and Claude in the browser, behind your tunnel; the profile's permissions decide. |
 | `--port <port>` | the local port for --http (default 8765). |
@@ -845,7 +1760,7 @@ ydisk mcp config [options]
 
 | Option | What it does |
 |---|---|
-| `--permission <key=level>` | make a permission stricter for this server only, like comments.create=deny; it never loosens the profile; repeat for more keys. |
+| `--permission <key=level>` | make a permission stricter for this server only, like files.delete=deny; it never loosens the profile; repeat for more keys. |
 | `--profiles <names\|all>` | serve several profiles from one server instead of one: names, comma-separated, or all for every profile. |
 
 **Example:** `ydisk personal mcp config`, `ydisk mcp config --profiles all`
@@ -867,7 +1782,7 @@ ydisk mcp add <client> [options]
 | Option | What it does |
 |---|---|
 | `--allow-writes` | acknowledge that this profile offers writing tools. |
-| `--permission <key=level>` | make a permission stricter for this server only, like comments.create=deny; it never loosens the profile; repeat for more keys. |
+| `--permission <key=level>` | make a permission stricter for this server only, like files.delete=deny; it never loosens the profile; repeat for more keys. |
 
 **Example:** `ydisk personal mcp add codex --allow-writes`
 
@@ -881,7 +1796,7 @@ ydisk mcp check [options]
 
 | Option | What it does |
 |---|---|
-| `--permission <key=level>` | make a permission stricter for this server only, like comments.create=deny; it never loosens the profile; repeat for more keys. |
+| `--permission <key=level>` | make a permission stricter for this server only, like files.delete=deny; it never loosens the profile; repeat for more keys. |
 
 **Example:** `ydisk personal mcp check`
 
@@ -927,7 +1842,7 @@ ydisk config set <setting> <value> [options]
 
 | Argument | | What it is |
 |---|---|---|
-| `setting` | required | one of: limit, timeout_ms, color, record, record_input, keep_runs_for_days, keep_successful_runs_for_days, keep_store_runs_for_days, runs_size_limit_mb, permissions, requests_per_minute, search_reranker, embedding_provider, embedding_model, embedding_base_url, embedding_dims, models, update_check, skill_hint, search_stemmers.cyrillic, search_stemmers.latin, owner_languages, crm.<provider>:<account>.links, crm.<provider>:<account>.company-types, crm.<provider>:<account>.scope, crm.<provider>:<account>.unassigned, crm.<provider>:<account>.self, crm.<provider>:<account>.stage-tasks, crm.<provider>:<account>.activities. |
+| `setting` | required | one of: limit, timeout_ms, color, record, record_input, keep_runs_for_days, keep_successful_runs_for_days, keep_store_runs_for_days, runs_size_limit_mb, permissions, requests_per_minute, search_reranker, embedding_provider, embedding_model, embedding_base_url, embedding_dims, models, update_check, skill_hint, search_stemmers.cyrillic, search_stemmers.latin, owner_languages, crm.<provider>:<account>.links, crm.<provider>:<account>.company-types, crm.<provider>:<account>.scope, crm.<provider>:<account>.unassigned, crm.<provider>:<account>.self, crm.<provider>:<account>.stage-tasks, crm.<provider>:<account>.activities, crm.<provider>:<account>.files.max_files, crm.<provider>:<account>.files.max_file_mb, crm.<provider>:<account>.files.max_run_mb, crm.<provider>:<account>.files.run_minutes, crm.<provider>:<account>.files.days, crm.<provider>:<account>.files.max_total_mb. |
 | `value` | required | a number, true or false; for a group tg:work,max:Alice,email:me@x. |
 
 | Option | What it does |
@@ -948,7 +1863,7 @@ ydisk config unset <setting> [options]
 
 | Argument | | What it is |
 |---|---|---|
-| `setting` | required | one of: limit, timeout_ms, color, record, record_input, keep_runs_for_days, keep_successful_runs_for_days, keep_store_runs_for_days, runs_size_limit_mb, permissions, requests_per_minute, search_reranker, embedding_provider, embedding_model, embedding_base_url, embedding_dims, models, update_check, skill_hint, search_stemmers.cyrillic, search_stemmers.latin, owner_languages, crm.<provider>:<account>.links, crm.<provider>:<account>.company-types, crm.<provider>:<account>.scope, crm.<provider>:<account>.unassigned, crm.<provider>:<account>.self, crm.<provider>:<account>.stage-tasks, crm.<provider>:<account>.activities. |
+| `setting` | required | one of: limit, timeout_ms, color, record, record_input, keep_runs_for_days, keep_successful_runs_for_days, keep_store_runs_for_days, runs_size_limit_mb, permissions, requests_per_minute, search_reranker, embedding_provider, embedding_model, embedding_base_url, embedding_dims, models, update_check, skill_hint, search_stemmers.cyrillic, search_stemmers.latin, owner_languages, crm.<provider>:<account>.links, crm.<provider>:<account>.company-types, crm.<provider>:<account>.scope, crm.<provider>:<account>.unassigned, crm.<provider>:<account>.self, crm.<provider>:<account>.stage-tasks, crm.<provider>:<account>.activities, crm.<provider>:<account>.files.max_files, crm.<provider>:<account>.files.max_file_mb, crm.<provider>:<account>.files.max_run_mb, crm.<provider>:<account>.files.run_minutes, crm.<provider>:<account>.files.days, crm.<provider>:<account>.files.max_total_mb. |
 
 | Option | What it does |
 |---|---|

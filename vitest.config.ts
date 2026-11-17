@@ -18,6 +18,8 @@ export default defineConfig({
         "src/testing/**",
         // The entry point: one line handing argv to run(), which the suite drives directly.
         "src/bin/**",
+        // Generated from Yandex's Swagger by pnpm generate; src/api.test.ts sends every operation through it.
+        "src/generated/**",
       ],
       reporter: ["text-summary", "json-summary"],
       thresholds: {

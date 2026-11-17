@@ -1,10 +1,45 @@
-import { hostFetch, retrying } from "@wirecat/cli-base/http"
+import { type FetchLike, hostFetch, retrying } from "@wirecat/cli-base/http"
 import { serviceApiCommand } from "@wirecat/cli-core/cli"
 import { Pacer, pacePathFor } from "@wirecat/cli-core/sends"
 import type { Command } from "commander"
-import { API, configuration } from "../config.js"
+import { API, configuration, LINK_OPERATIONS } from "../config.js"
 import { contextOf, PACE, tokenOf } from "../context.js"
-import { DESKTOP, IDENTITY } from "../identity.js"
+import { API_HOSTS, IDENTITY } from "../identity.js"
+
+/** A resource's fields that carry a link to its bytes (`file`, `preview`, `sizes` in Yandex's Resource model). */
+const LINK_FIELDS = new Set(["file", "preview", "sizes"])
+
+const strip = (value: unknown): unknown =>
+  Array.isArray(value)
+    ? value.map(strip)
+    : value && typeof value === "object"
+      ? Object.fromEntries(
+          Object.entries(value).flatMap(([key, one]) => (LINK_FIELDS.has(key) ? [] : [[key, strip(one)]])),
+        )
+      : value
+
+/** The answers with every download link taken out, so the api group never prints one. */
+const withoutLinks =
+  (fetch: FetchLike): FetchLike =>
+  async (input, init) => {
+    const response = await fetch(input, init)
+    if (!response.headers.get("content-type")?.includes("json")) return response
+    const text = await response.text()
+    let body: unknown
+    try {
+      body = JSON.parse(text)
+    } catch {
+      return new Response(text, response)
+    }
+    const headers = new Headers(response.headers)
+    headers.delete("content-length")
+    headers.delete("content-encoding")
+    return new Response(JSON.stringify(strip(body)), {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    })
+  }
 
 /**
  * The service's raw API from its spec, `api list`, `api show` and one command per operation, through cli-core's shared
@@ -19,9 +54,13 @@ export const apiCommand = (): Command =>
     configuration,
     fetch: (command) => {
       const { environment, env, profile } = contextOf(command)
-      const send = hostFetch({ hosts: DESKTOP.hosts ?? [], ...(environment.fetch ? { fetch: environment.fetch } : {}) })
-      return retrying(send, { pacer: new Pacer(pacePathFor(IDENTITY, profile, env), PACE) })
+      const send = hostFetch({ hosts: API_HOSTS, ...(environment.fetch ? { fetch: environment.fetch } : {}) })
+      return withoutLinks(retrying(send, { pacer: new Pacer(pacePathFor(IDENTITY, profile, env), PACE) }))
     },
+    excluded: LINK_OPERATIONS.map((id) => ({
+      id,
+      reason: "answers a link that grants the file to whoever holds it; files download and files upload use it unseen",
+    })),
     token: tokenOf,
     schemas: () => import("../generated/schemas.js").then((module) => module.schemas),
     definitions: () => import("../generated/definitions.js").then((module) => module.definitions),

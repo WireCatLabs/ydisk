@@ -5,21 +5,22 @@ import {
   type EventSink,
   environmentOf,
   type GlobalFlags,
+  linkFetch,
   ProfileTokenStore,
 } from "@wirecat/cli-core/cli"
 import { Pacer, pacePathFor } from "@wirecat/cli-core/sends"
 import type { Command } from "commander"
 import { configuration } from "./config.js"
-import { IDENTITY } from "./identity.js"
-import { type CommentsService, commentsService } from "./sample/comments.js"
-import { SERVICE, transport } from "./sample/transport.js"
+import { API_HOSTS, DESKTOP, IDENTITY } from "./identity.js"
+import { diskSource } from "./yandex/source.js"
+import { SERVICE, transport } from "./yandex/transport.js"
 
 /** What a test hands `run()` beside cli-core's own: the fake service in place of the network (WC-ARCH-10). */
 export interface ServiceEnvironment extends BaseEnvironment {
   fetch?: typeof fetch
 }
 
-// SAMPLE: your service's documented limit; this one is made up.
+// Yandex documents no rate limit (yandex-disk.md §1.5); this pace stays well under what a person clicks.
 export const PACE = { perMinute: 120, burst: 20 }
 
 /**
@@ -47,19 +48,32 @@ export const refuseOffline = (flags: GlobalFlags) => {
     throw new CliError("permission_error", `this needs ${SERVICE}; leave out --offline`, { reason: "offline.refused" })
 }
 
-/** The service for one run, with the token it was given; `events` comes from `run()`, so each request is recorded. */
-export const serviceFor = (command: Command, token: string, events: EventSink) => {
+/** Download and upload links point away from the API; linkFetch never sends them the token. */
+export const LINK_HOSTS = (DESKTOP.hosts ?? []).filter((host) => !API_HOSTS.includes(host))
+/** A file moves at the link's own pace; the run's --timeout and stop still end it. */
+const LINK_TIMEOUT_MS = 60 * 60_000
+
+/** The Disk for one run, with the token it was given; `events` comes from `run()`, so each request is recorded. */
+export const diskFor = (command: Command, events: EventSink | undefined, token: string) => {
   const { environment, env, profile } = contextOf(command)
-  return commentsService(
+  return diskSource(
     transport({
       token,
-      events,
+      ...(events ? { events } : {}),
       signal: environment.signal,
       ...(environment.fetch ? { fetch: environment.fetch } : {}),
       pacer: new Pacer(pacePathFor(IDENTITY, profile, env), PACE),
     }),
+    linkFetch({
+      hosts: LINK_HOSTS,
+      timeoutMs: LINK_TIMEOUT_MS,
+      ...(environment.fetch ? { fetch: environment.fetch } : {}),
+    }),
+    environment.signal,
   )
 }
+
+export type Disk = ReturnType<typeof diskFor>
 
 /** The profile's saved token, or an authentication error that says how to sign in. Read before any request. */
 export const tokenOf = (command: Command): string => {
@@ -72,7 +86,7 @@ export const tokenOf = (command: Command): string => {
  * Every remote call goes through here: inside cli-core's run, so `--timeout` bounds it, a failure or `--record` keeps
  * a run named after the command, and the transport's requests land in that run (WC-LIFE-5, WC-LIFE-15).
  */
-export const withService = <T>(command: Command, body: (service: CommentsService) => Promise<T>): Promise<T> => {
+export const withDisk = <T>(command: Command, body: (disk: Disk) => Promise<T>): Promise<T> => {
   const token = tokenOf(command)
-  return contextOf(command).run((events) => body(serviceFor(command, token, events)))
+  return contextOf(command).run((events) => body(diskFor(command, events, token)))
 }

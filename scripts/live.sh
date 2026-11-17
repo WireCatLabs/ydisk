@@ -3,10 +3,10 @@
 # the `# Needs:` lines below, passes the token on stdin and records the pass. Every folder is a temporary one and the
 # keyring is out of reach, so nothing touches the owner's store, keyring or settings.
 #   scripts/live.sh < token-file
-# SAMPLE: replace the comments reads with your own commands; checked against the sample, it fails at sign-in.
-# SAMPLE: one `# Needs:` line for each thing the test account must hold, so the owner prepares it before the run.
-# Needs: a token for a test account, never one that matters
-# Needs: at least one comment the token can read
+# It reads, then uploads one temporary file into /ydisk-live, moves it and deletes it to the trash: the download and
+# upload confirm the hosts the docs name, and the move confirms that a file keeps its resource_id.
+# Needs: a token for a test Yandex account, never one that matters (cloud_api:disk.read, disk.write, disk.info)
+# Needs: a folder /ydisk-live with a file live-check.txt whose text holds the word wirecatlive
 set -euo pipefail
 root=$(cd -- "$(dirname -- "$0")/.." && pwd)
 work=$(mktemp -d)
@@ -32,11 +32,32 @@ mkdir -p "$HOME"
 "${cli[@]}" live session start --credential-storage file --json >/dev/null
 trap '"${cli[@]}" live session end --json >/dev/null 2>&1 || true; rm -rf "$work"' EXIT
 
-"${cli[@]}" live comments list --json >"$work/list.json"
+"${cli[@]}" live session status --check --json >/dev/null
+"${cli[@]}" live files list --folder /ydisk-live --json >"$work/list.json"
 node -e '
   const list = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
-  if (!Array.isArray(list.items)) throw new Error(`no items: ${JSON.stringify(list).slice(0, 200)}`)' "$work/list.json"
+  if (!list.items?.some((item) => item.name === "live-check.txt"))
+    throw new Error(`no live-check.txt in /ydisk-live: ${JSON.stringify(list).slice(0, 200)}`)' "$work/list.json"
+"${cli[@]}" live files download /ydisk-live/live-check.txt --output "$work/live-check.txt" --json >/dev/null
+grep -q wirecatlive "$work/live-check.txt"
+"${cli[@]}" live folders add /ydisk-live --json >/dev/null
+"${cli[@]}" live sync --json >/dev/null
+"${cli[@]}" live search wirecatlive --json >"$work/found.json"
+node -e '
+  const found = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
+  if (!JSON.stringify(found).includes("live-check.txt")) throw new Error("search did not find live-check.txt")' "$work/found.json"
+stamp=$(date +%s)
+echo "ydisk live check $stamp" >"$work/upload.txt"
+"${cli[@]}" live files upload "$work/upload.txt" --folder /ydisk-live --name "upload-$stamp.txt" --json >/dev/null
+"${cli[@]}" live files show "/ydisk-live/upload-$stamp.txt" --json >"$work/before.json"
+"${cli[@]}" live files move "/ydisk-live/upload-$stamp.txt" --folder /ydisk-live --name "moved-$stamp.txt" --json >/dev/null
+"${cli[@]}" live files show "/ydisk-live/moved-$stamp.txt" --json >"$work/after.json"
+node -e '
+  const read = (file) => JSON.parse(require("fs").readFileSync(file, "utf8")).item.id
+  if (read(process.argv[1]) !== read(process.argv[2])) throw new Error("a moved file got a new resource_id")' \
+  "$work/before.json" "$work/after.json"
+"${cli[@]}" live files delete "/ydisk-live/moved-$stamp.txt" --yes --json >/dev/null
 "${cli[@]}" live doctor --json >/dev/null
 
 "${cli[@]}" live session end --json >/dev/null
-echo "live check passed: describe format 2, sign-in, comments list, doctor, sign-out"
+echo "live check passed: describe format 2, sign-in, files list, download, upload, move and delete, sync, search, doctor, sign-out"

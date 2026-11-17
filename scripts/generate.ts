@@ -63,7 +63,7 @@ const artifacts = generate(
       securitySchemes: { oauth: { type: "http", scheme: "OAuth" } },
       security: [{ oauth: [] }],
       reason:
-        "The Swagger 1.2 source names no sign-in. https://yandex.ru/dev/disk-api/doc/en/concepts/quickstart: every " +
+        "The Swagger 1.2 source names no sign-in. <https://yandex.ru/dev/disk-api/doc/en/concepts/quickstart>: every " +
         "request carries `Authorization: OAuth <token>`.",
     },
   },

@@ -3,12 +3,10 @@ import { hostFetch, providerWaitMs, readJsonResponse, statusToCode } from "@wire
 import { type EventSink, providerRequest } from "@wirecat/cli-core/cli"
 import type { Pacer } from "@wirecat/cli-core/sends"
 import * as v from "valibot"
-import { DESKTOP } from "../identity.js"
+import { API_HOSTS } from "../identity.js"
 
-// SAMPLE: the Example Comments service does not exist; `.invalid` never resolves, so a real run reaches nothing.
-// Replace the address, the paths and the answer shapes with your service's, each from its docs or a captured answer.
-export const SERVICE_URL = "https://comments.example.invalid/v1/"
-export const SERVICE = "Example Comments"
+export const SERVICE_URL = "https://cloud-api.yandex.net/v1/"
+export const SERVICE = "Yandex Disk"
 
 const TIMEOUT_MS = 30_000
 const LARGEST_ANSWER = 8 * 1024 * 1024
@@ -16,8 +14,8 @@ const LARGEST_ANSWER = 8 * 1024 * 1024
 const LONGEST_PACE_WAIT_MS = 60_000
 
 export interface Request {
-  method: "GET" | "POST" | "PATCH"
-  /** The path as a template, `comments/{id}`: the run record keeps the template, never an id. */
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
+  /** The path as a template, `disk/resources`: the run record keeps the template, never an id. */
   path: string
   ids?: Record<string, string>
   query?: Record<string, string | number | undefined>
@@ -77,7 +75,8 @@ export const failureOf = (status: number, writes: boolean, retryAfterMs?: number
   if (status === 404) return new CliError("not_found", `${SERVICE} has no such item, or this token cannot see it`)
   return new CliError(statusToCode(status), `${SERVICE} refused the request (HTTP ${status})`, {
     status,
-    retryable: status >= 500,
+    // 507: the Disk is full, which a retry does not change.
+    retryable: status >= 500 && status !== 507,
   })
 }
 
@@ -87,7 +86,7 @@ export const failureOf = (status: number, writes: boolean, retryAfterMs?: number
  * first may have landed (WC-OUT-20).
  */
 export const transport = (options: TransportOptions) => {
-  const fetchOf = hostFetch({ hosts: DESKTOP.hosts ?? [], ...(options.fetch ? { fetch: options.fetch } : {}) })
+  const fetchOf = hostFetch({ hosts: API_HOSTS, ...(options.fetch ? { fetch: options.fetch } : {}) })
   const sleep = options.sleep ?? realSleep
   const now = options.now ?? Date.now
 
@@ -137,7 +136,8 @@ export const transport = (options: TransportOptions) => {
         response = await fetchOf(url, {
           method: request.method,
           headers: {
-            authorization: `Bearer ${options.token}`,
+            // Yandex's scheme word is OAuth, not Bearer (https://yandex.ru/dev/disk-api/doc/en/concepts/quickstart).
+            authorization: `OAuth ${options.token}`,
             accept: "application/json",
             ...(request.body ? { "content-type": "application/json" } : {}),
           },
@@ -158,7 +158,9 @@ export const transport = (options: TransportOptions) => {
       }
       let body: unknown
       try {
-        body = await readJsonResponse(response, { maxBytes: LARGEST_ANSWER, signal })
+        // A delete answers 204 with no body (https://yandex.ru/dev/disk-api/doc/en/reference/delete).
+        body =
+          response.status === 204 ? undefined : await readJsonResponse(response, { maxBytes: LARGEST_ANSWER, signal })
       } catch (error) {
         const failure =
           isCliError(error) && error.code !== "invalid_response"

@@ -17,7 +17,7 @@ const LISTING = "listing"
 // Entries of the resource listing the CLI does not read, each with why.
 const LEFT_OUT: Readonly<Record<string, string>> = {
   "/v1/data/admin/settings/{settings_name}/organizations/{org_id}":
-    "Yandex 360 organization settings for admins, not a person's Disk; https://yandex.ru/dev/disk-api/doc/en/ does not describe it",
+    "Yandex 360 organization settings for admins, not a person's Disk; <https://yandex.ru/dev/disk-api/doc/en/> does not describe it",
 }
 
 // Corrections to the service's document, each with the reason from its documentation or a captured answer.

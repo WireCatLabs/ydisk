@@ -25,9 +25,9 @@ import {
 } from "@wirecat/cli-core/cli"
 import { Command } from "commander"
 import { configuration } from "../config.js"
-import { contextOf, refuseOffline, serviceFor, withService } from "../context.js"
+import { contextOf, diskFor, refuseOffline, withDisk } from "../context.js"
 import { IDENTITY } from "../identity.js"
-import { SERVICE } from "../sample/transport.js"
+import { SERVICE } from "../yandex/transport.js"
 
 // `session start | status | end | list` is every provider CLI's sign-in (WC-ACCT-12). Keep it; replace the token
 // prompt and the `me` check with your service's. A service with OAuth signs in through cli-core's oauth module
@@ -67,9 +67,9 @@ const startCommand = () =>
       refuseCommandName(profile, commandWords(rootOf(this)), CLI)
       refuseOffline(flags)
       // A secret is never an argument: it would land in shell history and in the run record (WC-SECR-5).
-      const token = (await readSecret(`${SERVICE} API token: `, secretInputOf(this))).trim()
+      const token = (await readSecret(`${SERVICE} OAuth token: `, secretInputOf(this))).trim()
       if (!token) throw new CliError("validation_error", "no token was given")
-      const user = await run((events) => serviceFor(this, token, events).me())
+      const user = await run((events) => diskFor(this, events, token).account())
       const storedIn = tokens.write(profile, token, args.credentialStorage)
       rememberAccount(IDENTITY, profile, user.id, env)
       answer(this, { profile, state: "saved", stored_in: storedIn, verified: true, user })
@@ -91,7 +91,7 @@ const statusCommand = () =>
       const saved = tokens.read(profile)
       const status = { profile, state: saved ? "saved" : "missing", token_from: saved?.source ?? null }
       if (!args.check || !saved) return answer(this, { ...status, verified: false })
-      answer(this, { ...status, verified: true, user: await withService(this, (service) => service.me()) })
+      answer(this, { ...status, verified: true, user: await withDisk(this, (disk) => disk.account()) })
     })
 
 const endCommand = () =>
