@@ -3,10 +3,10 @@
 # the `# Needs:` lines below, passes the token on stdin and records the pass. Every folder is a temporary one and the
 # keyring is out of reach, so nothing touches the owner's store, keyring or settings.
 #   scripts/live.sh < token-file
-# It reads, then uploads one temporary file into /ydisk-live, moves it and deletes it to the trash: the download and
+# It creates /ydisk-live and its live-check.txt (holding the word wirecatlive) when they are missing. It reads, then
+# uploads one temporary file into /ydisk-live, moves it and deletes it to the trash: the download and
 # upload confirm the hosts the docs name, and the move confirms that a file keeps its resource_id.
 # Needs: a token for a test Yandex account, never one that matters (cloud_api:disk.read, disk.write, disk.info)
-# Needs: a folder /ydisk-live with a file live-check.txt whose text holds the word wirecatlive
 set -euo pipefail
 root=$(cd -- "$(dirname -- "$0")/.." && pwd)
 work=$(mktemp -d)
@@ -33,11 +33,20 @@ mkdir -p "$HOME"
 trap '"${cli[@]}" live session end --json >/dev/null 2>&1 || true; rm -rf "$work"' EXIT
 
 "${cli[@]}" live session status --check --json >/dev/null
-"${cli[@]}" live files list --folder /ydisk-live --json >"$work/list.json"
-node -e '
-  const list = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
-  if (!list.items?.some((item) => item.name === "live-check.txt"))
-    throw new Error(`no live-check.txt in /ydisk-live: ${JSON.stringify(list).slice(0, 200)}`)' "$work/list.json"
+has_fixture() {
+  "${cli[@]}" live files list --folder /ydisk-live --json >"$work/list.json" 2>/dev/null || return 2
+  node -e '
+    const list = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
+    process.exit(list.items?.some((item) => item.name === "live-check.txt") ? 0 : 1)' "$work/list.json"
+}
+status=0
+has_fixture || status=$?
+if [ "$status" -ne 0 ]; then
+  [ "$status" -eq 2 ] && "${cli[@]}" live files create /ydisk-live --json >/dev/null
+  echo "wirecatlive: the ydisk live check reads this file" >"$work/fixture.txt"
+  "${cli[@]}" live files upload "$work/fixture.txt" --folder /ydisk-live --name live-check.txt --json >/dev/null
+  has_fixture
+fi
 "${cli[@]}" live files download /ydisk-live/live-check.txt --output "$work/live-check.txt" --json >/dev/null
 grep -q wirecatlive "$work/live-check.txt"
 "${cli[@]}" live folders add /ydisk-live --json >/dev/null
