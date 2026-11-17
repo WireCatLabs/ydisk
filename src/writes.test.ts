@@ -170,3 +170,20 @@ it("a token the service refuses says how to sign this profile in again", async (
   expect(refused.json()).toMatchObject({ error: { code: "authentication_error" } })
   expect(JSON.stringify(refused.json())).toContain("ydisk personal session start")
 })
+
+it("a local file that changes while the owner is asked is refused before anything is sent", async () => {
+  const local = join(mkdtempSync(join(tmpdir(), "ydisk-writes-")), "notes.txt")
+  writeFileSync(local, "some notes")
+  withPermissions({ "files.upload": "ask" })
+  const service = diskApi()
+  const changed = await runCli(["personal", "files", "upload", local], {
+    service,
+    answer: () => {
+      writeFileSync(local, "some notes, and more written while the question waited")
+      return "y"
+    },
+  })
+  expect(changed.code).not.toBe(0)
+  expect(changed.err).toContain("nothing was sent")
+  expect(service.calls).toEqual([])
+})

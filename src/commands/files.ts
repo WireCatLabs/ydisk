@@ -255,12 +255,12 @@ const uploadCommand = () =>
       const target = diskPath(
         posix.join(diskPath(args.folder ?? "/").replace(/^disk:/u, ""), args.name ?? basename(local)),
       )
-      // Built before any request: a local file that changed size fails here, before anything is sent.
-      const body = await uploadBlob(upload.source)
-      await write(this, args.replace ? [DELETE_KEY] : [], async (disk) => ({
-        path: target,
-        ...(await disk.upload(target, body, args.replace === true)),
-      }))
+      await write(this, args.replace ? [DELETE_KEY] : [], async (disk) => {
+        // Built after the owner answered and before any request: a local file that changed size while the question
+        // waited fails here, with nothing sent, instead of during the upload.
+        const body = await uploadBlob(upload.source)
+        return { path: target, ...(await disk.upload(target, body, args.replace === true)) }
+      })
     })
 
 const transfer = (name: "copy" | "move") =>
