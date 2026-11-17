@@ -19,11 +19,12 @@ import {
 import { appUpdate } from "@wirecat/cli-core/update"
 import type { Command } from "commander"
 import { apiCommand } from "./commands/api.js"
-import { commentsCommand } from "./commands/comments.js"
+import { filesCommand } from "./commands/files.js"
+import { libraryCommands } from "./commands/library.js"
 import { sessionCommand } from "./commands/session.js"
 import { configuration } from "./config.js"
 import { IDENTITY, PACKAGE, SKILL } from "./identity.js"
-import { SERVICE } from "./sample/transport.js"
+import { SERVICE } from "./yandex/transport.js"
 
 const update = appUpdate({
   packageName: PACKAGE,
@@ -40,9 +41,9 @@ const update = appUpdate({
 const mcpCommand = () =>
   appMcpCommand(IDENTITY, configuration, {
     name: SERVICE,
-    // SAMPLE: name the kinds of text other people wrote that your answers carry (WC-MCP-11).
-    untrusted: ["comment text", "author names"],
-    permissionExample: "comments.create=deny",
+    // Files can come from anyone who shared them or saved them to the Disk (WC-MCP-11).
+    untrusted: ["file text", "file and folder names"],
+    permissionExample: "files.delete=deny",
     skill: SKILL,
     signedIn: (profile, env, keyring) =>
       new ProfileTokenStore({ app: IDENTITY, env, ...(keyring ? { keyring } : {}) }).signedIn(profile),
@@ -55,8 +56,9 @@ export const definition = (): ProgramDefinition => ({
   commands: () => [
     commandsCommand(IDENTITY),
     sessionCommand(),
+    ...libraryCommands(),
+    filesCommand(),
     apiCommand(),
-    commentsCommand(),
     appDoctorCommand(IDENTITY, configuration, { packageName: PACKAGE }),
     skillCommand(IDENTITY, SKILL),
     mcpCommand(),

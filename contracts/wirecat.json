@@ -1,7 +1,7 @@
 {
   "wcat_manifest": 2,
   "name": "ydisk",
-  "description": "a new WireCat CLI, started from cli-template",
+  "description": "Yandex Disk for your AI agents: chosen folders as searchable text, and the files live",
   "docs_url": "https://github.com/WireCatLabs/ydisk#readme",
   "package": "@wirecat/yandex-disk-cli",
   "bin": "wcat-ydisk",
@@ -32,7 +32,7 @@
         "session",
         "start"
       ],
-      "summary": "sign in to Example Comments with an API token",
+      "summary": "sign in to Yandex Disk with an API token",
       "effects": {
         "remote": "read",
         "local": "write"
@@ -73,10 +73,686 @@
     },
     {
       "path": [
+        "folders",
+        "add"
+      ],
+      "summary": "import a folder and everything under it on the next sync",
+      "effects": {
+        "remote": "read",
+        "local": "write"
+      },
+      "permission": "folders.add"
+    },
+    {
+      "path": [
+        "folders",
+        "list"
+      ],
+      "summary": "list the folder ids sync imports",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "folders.list",
+      "entity": "selected_folder"
+    },
+    {
+      "path": [
+        "folders",
+        "browse"
+      ],
+      "summary": "list Disk folders one level at a time, live, to choose one for folders add",
+      "effects": {
+        "remote": "read",
+        "local": "read"
+      },
+      "permission": "folders.browse"
+    },
+    {
+      "path": [
+        "folders",
+        "remove"
+      ],
+      "summary": "stop importing a folder; the next sync drops its documents",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "folders.remove"
+    },
+    {
+      "path": [
+        "sync"
+      ],
+      "summary": "import what changed in the chosen folders, and finish an unfinished sync",
+      "effects": {
+        "remote": "read",
+        "local": "write"
+      },
+      "permission": "sync"
+    },
+    {
+      "path": [
+        "status"
+      ],
+      "summary": "show the last sync, imported documents and pending work",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "status"
+    },
+    {
+      "path": [
+        "documents",
+        "list"
+      ],
+      "summary": "list the synced files with their Disk paths",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "documents.list",
+      "entity": "document"
+    },
+    {
+      "path": [
+        "documents",
+        "show"
+      ],
+      "summary": "show an imported document's text, tabs and metadata",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "documents.show"
+    },
+    {
+      "path": [
+        "documents",
+        "export"
+      ],
+      "summary": "write an imported document to a new Markdown file",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "documents.export"
+    },
+    {
+      "path": [
+        "documents",
+        "context"
+      ],
+      "summary": "show a document with its tags, relationships, notes, memories and editors",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "documents.context"
+    },
+    {
+      "path": [
+        "search"
+      ],
+      "summary": "search imported documents by words, and by meaning when indexed",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "search"
+    },
+    {
+      "path": [
+        "catalog",
+        "import"
+      ],
+      "summary": "put cached file and folder metadata into the shared database",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "catalog.import"
+    },
+    {
+      "path": [
+        "catalog",
+        "show"
+      ],
+      "summary": "show stored metadata and the stable file or folder reference",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "catalog.show",
+      "entity": "document"
+    },
+    {
+      "path": [
+        "catalog",
+        "list"
+      ],
+      "summary": "list cached files and folders using metadata queries",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "catalog.list",
+      "entity": "document"
+    },
+    {
+      "path": [
+        "catalog",
+        "search"
+      ],
+      "summary": "search cached names, descriptions, types and observed people",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "catalog.search",
+      "entity": "document"
+    },
+    {
+      "path": [
+        "catalog",
+        "tree"
+      ],
+      "summary": "show the cached hierarchy below a folder or all selected roots",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "catalog.tree"
+    },
+    {
+      "path": [
+        "catalog",
+        "tags",
+        "list"
+      ],
+      "summary": "list local tags on a cached file or folder",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "catalog.tags.list",
+      "entity": "document_tag"
+    },
+    {
+      "path": [
+        "catalog",
+        "tags",
+        "add"
+      ],
+      "summary": "add local tags on a cached file or folder",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "catalog.tags.add"
+    },
+    {
+      "path": [
+        "catalog",
+        "tags",
+        "remove"
+      ],
+      "summary": "remove local tags on a cached file or folder",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "catalog.tags.remove"
+    },
+    {
+      "path": [
+        "tags",
+        "list"
+      ],
+      "summary": "list a document's tags",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "tags.list",
+      "entity": "document_tag"
+    },
+    {
+      "path": [
+        "tags",
+        "add"
+      ],
+      "summary": "tag a document",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "tags.add"
+    },
+    {
+      "path": [
+        "tags",
+        "remove"
+      ],
+      "summary": "untag a document",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "tags.remove"
+    },
+    {
+      "path": [
+        "relationships",
+        "list"
+      ],
+      "summary": "list a document's relationships",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "relationships.list",
+      "entity": "document_relationship"
+    },
+    {
+      "path": [
+        "relationships",
+        "add"
+      ],
+      "summary": "connect a document to another reference",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "relationships.add"
+    },
+    {
+      "path": [
+        "relationships",
+        "remove"
+      ],
+      "summary": "remove one of a document's relationships",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "relationships.remove"
+    },
+    {
+      "path": [
+        "notes",
+        "add"
+      ],
+      "summary": "write a note about a document",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "notes.add",
+      "entity": "note"
+    },
+    {
+      "path": [
+        "notes",
+        "list"
+      ],
+      "summary": "list a document's notes",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "notes.list",
+      "entity": "note"
+    },
+    {
+      "path": [
+        "notes",
+        "show"
+      ],
+      "summary": "show one note",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "notes.show",
+      "entity": "note"
+    },
+    {
+      "path": [
+        "notes",
+        "edit"
+      ],
+      "summary": "replace a note's text",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "notes.edit",
+      "entity": "note"
+    },
+    {
+      "path": [
+        "notes",
+        "remove"
+      ],
+      "summary": "delete one note",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "notes.remove"
+    },
+    {
+      "path": [
+        "memories",
+        "add"
+      ],
+      "summary": "record a memory about a document",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "memories.add"
+    },
+    {
+      "path": [
+        "memories",
+        "list"
+      ],
+      "summary": "list a document's memories",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "memories.list",
+      "entity": "memory"
+    },
+    {
+      "path": [
+        "memories",
+        "show"
+      ],
+      "summary": "show one memory",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "memories.show"
+    },
+    {
+      "path": [
+        "memories",
+        "confirm"
+      ],
+      "summary": "confirm a proposed memory as true",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "memories.confirm"
+    },
+    {
+      "path": [
+        "memories",
+        "stale"
+      ],
+      "summary": "mark a memory as out of date",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "memories.stale"
+    },
+    {
+      "path": [
+        "memories",
+        "search"
+      ],
+      "summary": "search a document's memories by words",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "memories.search",
+      "entity": "memory"
+    },
+    {
+      "path": [
+        "memories",
+        "extract"
+      ],
+      "summary": "send a document's text to the model and show the memories it proposes",
+      "effects": {
+        "remote": "write",
+        "local": "write"
+      },
+      "permission": "memories.extract"
+    },
+    {
+      "path": [
+        "facts",
+        "add"
+      ],
+      "summary": "record a fact a document shows",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "facts.add"
+    },
+    {
+      "path": [
+        "facts",
+        "list"
+      ],
+      "summary": "list a document's facts",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "facts.list",
+      "entity": "fact"
+    },
+    {
+      "path": [
+        "facts",
+        "show"
+      ],
+      "summary": "show one fact",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "facts.show"
+    },
+    {
+      "path": [
+        "facts",
+        "confirm"
+      ],
+      "summary": "confirm a proposed fact; a decision it supersedes stops holding",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "facts.confirm"
+    },
+    {
+      "path": [
+        "facts",
+        "reverse"
+      ],
+      "summary": "an accepted decision no longer holds, and nothing replaced it",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "facts.reverse"
+    },
+    {
+      "path": [
+        "identities",
+        "list"
+      ],
+      "summary": "list the people Yandex Disk shows for a document",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "identities.list",
+      "entity": "document_identity"
+    },
+    {
+      "path": [
+        "identities",
+        "link"
+      ],
+      "summary": "record that a Yandex Disk account belongs to a known person",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "identities.link"
+    },
+    {
+      "path": [
+        "files",
+        "list"
+      ],
+      "summary": "list what a Disk folder holds, live, a page at a time",
+      "effects": {
+        "remote": "read",
+        "local": "read"
+      },
+      "permission": "files.list"
+    },
+    {
+      "path": [
+        "files",
+        "show"
+      ],
+      "summary": "show one file or folder on the Disk, live",
+      "effects": {
+        "remote": "read",
+        "local": "read"
+      },
+      "permission": "files.show"
+    },
+    {
+      "path": [
+        "files",
+        "download"
+      ],
+      "summary": "read a Disk file's text, or save the file on this computer",
+      "effects": {
+        "remote": "read",
+        "local": "write"
+      },
+      "permission": "files.download"
+    },
+    {
+      "path": [
+        "files",
+        "upload"
+      ],
+      "summary": "put a local file on the Disk",
+      "effects": {
+        "remote": "write",
+        "local": "write"
+      },
+      "permission": "files.upload"
+    },
+    {
+      "path": [
+        "files",
+        "copy"
+      ],
+      "summary": "copy a file or folder on the Disk",
+      "effects": {
+        "remote": "write",
+        "local": "write"
+      },
+      "permission": "files.copy"
+    },
+    {
+      "path": [
+        "files",
+        "move"
+      ],
+      "summary": "move a file or folder on the Disk",
+      "effects": {
+        "remote": "write",
+        "local": "write"
+      },
+      "permission": "files.move"
+    },
+    {
+      "path": [
+        "files",
+        "create"
+      ],
+      "summary": "create a folder on the Disk at this path",
+      "effects": {
+        "remote": "write",
+        "local": "write"
+      },
+      "permission": "files.create"
+    },
+    {
+      "path": [
+        "files",
+        "delete"
+      ],
+      "summary": "move a file or folder to the Disk's trash; files restore brings it back",
+      "effects": {
+        "remote": "write",
+        "local": "write"
+      },
+      "permission": "files.delete"
+    },
+    {
+      "path": [
+        "files",
+        "restore"
+      ],
+      "summary": "bring a file or folder back from the Disk's trash",
+      "effects": {
+        "remote": "write",
+        "local": "write"
+      },
+      "permission": "files.restore"
+    },
+    {
+      "path": [
+        "files",
+        "publish"
+      ],
+      "summary": "open a file or folder to anyone with its public link; asks as files.share does",
+      "effects": {
+        "remote": "write",
+        "local": "write"
+      },
+      "permission": "files.publish"
+    },
+    {
+      "path": [
+        "files",
+        "unpublish"
+      ],
+      "summary": "close a file's or folder's public link; asks as files.share does",
+      "effects": {
+        "remote": "write",
+        "local": "write"
+      },
+      "permission": "files.unpublish"
+    },
+    {
+      "path": [
         "api",
         "list"
       ],
-      "summary": "list every Example Comments API operation this CLI offers, without calling…",
+      "summary": "list every Yandex Disk API operation this CLI offers, without calling Yandex…",
       "effects": {
         "remote": "none",
         "local": "none"
@@ -89,7 +765,7 @@
         "api",
         "show"
       ],
-      "summary": "show one operation's parameters and request schema, without calling Example…",
+      "summary": "show one operation's parameters and request schema, without calling Yandex Disk",
       "effects": {
         "remote": "none",
         "local": "none"
@@ -99,112 +775,242 @@
     {
       "path": [
         "api",
-        "comments-list"
+        "disk-get"
       ],
-      "summary": "List comments, newest first — read (GET /comments)",
+      "summary": "Получить метаинформацию о диске пользователя — read (GET /v1/disk)",
       "effects": {
         "remote": "read",
         "local": "none"
       },
-      "permission": "api.comments-list"
+      "permission": "api.disk-get"
     },
     {
       "path": [
         "api",
-        "comments-create"
+        "resources-list"
       ],
-      "summary": "Create a comment — write (POST /comments)",
-      "effects": {
-        "remote": "write",
-        "local": "none"
-      },
-      "permission": "api.comments-create"
-    },
-    {
-      "path": [
-        "api",
-        "comments-get"
-      ],
-      "summary": "Show one comment — read (GET /comments/{comment_id})",
+      "summary": "Получить метаинформацию о файле или каталоге — read (GET /v1/disk/resources)",
       "effects": {
         "remote": "read",
         "local": "none"
       },
-      "permission": "api.comments-get"
+      "permission": "api.resources-list"
     },
     {
       "path": [
         "api",
-        "comments-update"
+        "resources-create"
       ],
-      "summary": "Change a comment's text — write (PATCH /comments/{comment_id})",
+      "summary": "Создать каталог — write (PUT /v1/disk/resources)",
       "effects": {
         "remote": "write",
         "local": "none"
       },
-      "permission": "api.comments-update"
+      "permission": "api.resources-create"
     },
     {
       "path": [
         "api",
-        "comments-delete"
+        "resources-update"
       ],
-      "summary": "Delete a comment — destructive (DELETE /comments/{comment_id})",
+      "summary": "Обновить пользовательские данные ресурса — write (PATCH /v1/disk/resources)",
       "effects": {
         "remote": "write",
         "local": "none"
       },
-      "permission": "api.comments-delete"
+      "permission": "api.resources-update"
     },
     {
       "path": [
-        "comments",
-        "list"
+        "api",
+        "resources-delete"
       ],
-      "summary": "list the comments in Example Comments, newest first",
-      "effects": {
-        "remote": "read",
-        "local": "read"
-      },
-      "permission": "comments.list",
-      "entity": "comment"
-    },
-    {
-      "path": [
-        "comments",
-        "show"
-      ],
-      "summary": "show one comment in Example Comments",
-      "effects": {
-        "remote": "read",
-        "local": "read"
-      },
-      "permission": "comments.show",
-      "entity": "comment"
-    },
-    {
-      "path": [
-        "comments",
-        "create"
-      ],
-      "summary": "post a comment in Example Comments",
+      "summary": "Удалить файл или папку — destructive (DELETE /v1/disk/resources)",
       "effects": {
         "remote": "write",
-        "local": "write"
+        "local": "none"
       },
-      "permission": "comments.create"
+      "permission": "api.resources-delete"
     },
     {
       "path": [
-        "comments",
-        "update"
+        "api",
+        "resources-copy"
       ],
-      "summary": "change the text of your comment in Example Comments",
+      "summary": "Создать копию файла или папки — write (POST /v1/disk/resources/copy)",
       "effects": {
         "remote": "write",
-        "local": "write"
+        "local": "none"
       },
-      "permission": "comments.update"
+      "permission": "api.resources-copy"
+    },
+    {
+      "path": [
+        "api",
+        "resources-files-list"
+      ],
+      "summary": "Получить список файлов упорядоченный по имени — read (GET…",
+      "effects": {
+        "remote": "read",
+        "local": "none"
+      },
+      "permission": "api.resources-files-list"
+    },
+    {
+      "path": [
+        "api",
+        "resources-last-uploaded-list"
+      ],
+      "summary": "Получить список файлов упорядоченный по дате загрузки — read (GET…",
+      "effects": {
+        "remote": "read",
+        "local": "none"
+      },
+      "permission": "api.resources-last-uploaded-list"
+    },
+    {
+      "path": [
+        "api",
+        "resources-move"
+      ],
+      "summary": "Переместить файл или папку — write (POST /v1/disk/resources/move)",
+      "effects": {
+        "remote": "write",
+        "local": "none"
+      },
+      "permission": "api.resources-move"
+    },
+    {
+      "path": [
+        "api",
+        "resources-public-list"
+      ],
+      "summary": "Получить список опубликованных ресурсов — read (GET /v1/disk/resources/public)",
+      "effects": {
+        "remote": "read",
+        "local": "none"
+      },
+      "permission": "api.resources-public-list"
+    },
+    {
+      "path": [
+        "api",
+        "resources-publish"
+      ],
+      "summary": "Опубликовать ресурс — write (PUT /v1/disk/resources/publish)",
+      "effects": {
+        "remote": "write",
+        "local": "none"
+      },
+      "permission": "api.resources-publish"
+    },
+    {
+      "path": [
+        "api",
+        "resources-unpublish"
+      ],
+      "summary": "Отменить публикацию ресурса — write (PUT /v1/disk/resources/unpublish)",
+      "effects": {
+        "remote": "write",
+        "local": "none"
+      },
+      "permission": "api.resources-unpublish"
+    },
+    {
+      "path": [
+        "api",
+        "resources-upload-url"
+      ],
+      "summary": "Загрузить файл в Диск по URL — write (POST /v1/disk/resources/upload)",
+      "effects": {
+        "remote": "write",
+        "local": "none"
+      },
+      "permission": "api.resources-upload-url"
+    },
+    {
+      "path": [
+        "api",
+        "public-resources-get"
+      ],
+      "summary": "Получить метаинформацию о публичном файле или каталоге — read (GET…",
+      "effects": {
+        "remote": "read",
+        "local": "none"
+      },
+      "permission": "api.public-resources-get"
+    },
+    {
+      "path": [
+        "api",
+        "public-settings-update"
+      ],
+      "summary": "Обновить настройки публичных ссылок — write (PATCH…",
+      "effects": {
+        "remote": "write",
+        "local": "none"
+      },
+      "permission": "api.public-settings-update"
+    },
+    {
+      "path": [
+        "api",
+        "public-resources-save-to-disk"
+      ],
+      "summary": "Сохранить публичный ресурс в папку Загрузки — write (POST…",
+      "effects": {
+        "remote": "write",
+        "local": "none"
+      },
+      "permission": "api.public-resources-save-to-disk"
+    },
+    {
+      "path": [
+        "api",
+        "trash-resources-list"
+      ],
+      "summary": "Получить содержимое Корзины — read (GET /v1/disk/trash/resources)",
+      "effects": {
+        "remote": "read",
+        "local": "none"
+      },
+      "permission": "api.trash-resources-list"
+    },
+    {
+      "path": [
+        "api",
+        "trash-resources-delete"
+      ],
+      "summary": "Очистить Корзину — destructive (DELETE /v1/disk/trash/resources)",
+      "effects": {
+        "remote": "write",
+        "local": "none"
+      },
+      "permission": "api.trash-resources-delete"
+    },
+    {
+      "path": [
+        "api",
+        "trash-resources-restore"
+      ],
+      "summary": "Восстановить ресурс из Корзины — write (PUT /v1/disk/trash/resources/restore)",
+      "effects": {
+        "remote": "write",
+        "local": "none"
+      },
+      "permission": "api.trash-resources-restore"
+    },
+    {
+      "path": [
+        "api",
+        "operations-get"
+      ],
+      "summary": "Получить статус асинхронной операции — read (GET…",
+      "effects": {
+        "remote": "read",
+        "local": "none"
+      },
+      "permission": "api.operations-get"
     },
     {
       "path": [
@@ -468,15 +1274,82 @@
     }
   ],
   "entities": {
+    "selected_folder": {
+      "fields": [
+        "id"
+      ]
+    },
+    "document": {
+      "fields": [
+        "name",
+        "kind",
+        "mime"
+      ]
+    },
+    "document_tag": {
+      "fields": [
+        "tag"
+      ]
+    },
+    "document_relationship": {
+      "fields": [
+        "id",
+        "from",
+        "to",
+        "kind",
+        "role",
+        "confirmed",
+        "origin"
+      ]
+    },
+    "note": {
+      "fields": [
+        "ref",
+        "kind",
+        "provider",
+        "account",
+        "url",
+        "id",
+        "source",
+        "folder_id",
+        "path",
+        "title",
+        "text",
+        "revision",
+        "content_hash",
+        "export_path",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "tags",
+        "excerpt",
+        "found_by"
+      ]
+    },
+    "memory": {
+      "fields": [
+        "kind",
+        "status",
+        "scope"
+      ]
+    },
+    "fact": {
+      "fields": [
+        "kind",
+        "status"
+      ]
+    },
+    "document_identity": {
+      "fields": [
+        "remote_id",
+        "provider",
+        "role"
+      ]
+    },
     "api_operation": {
       "fields": [
         "effect",
         "tag"
-      ]
-    },
-    "comment": {
-      "fields": [
-        "author"
       ]
     },
     "run": {
@@ -512,7 +1385,10 @@
   },
   "network": {
     "hosts": [
-      "comments.example.invalid",
+      "cloud-api.yandex.net",
+      "downloader.disk.yandex.ru",
+      "*.disk.yandex.net",
+      "*.storage.yandex.net",
       "registry.npmjs.org",
       "huggingface.co",
       "*.huggingface.co",
@@ -522,7 +1398,7 @@
     ]
   },
   "desktop": {
-    "tagline": "A new WireCat CLI, started from cli-template",
+    "tagline": "Search your Yandex Disk folders and work with the files",
     "profiles": {
       "args": [
         "session",
@@ -565,8 +1441,8 @@
       "start"
     ],
     "signIn": {
-      "gives": "Lets your agent read and change your account through ydisk.",
-      "asks": "An API token or key from the service."
+      "gives": "Lets your agent read, search and change the files on your Yandex Disk through ydisk.",
+      "asks": "A Yandex OAuth token with Disk access, pasted once and kept in the system keyring."
     },
     "skill": {
       "status": [
@@ -636,7 +1512,27 @@
       ]
     },
     "tasks": null,
-    "sync": null,
+    "sync": {
+      "run": [
+        "{profile}",
+        "sync",
+        "--record",
+        "--json"
+      ],
+      "last": [
+        "runs",
+        "list",
+        "command:sync",
+        "status:success",
+        "--limit",
+        "50",
+        "--no-record",
+        "--json"
+      ],
+      "lastShape": "runs",
+      "what": "files in the Disk folders you choose",
+      "note": null
+    },
     "storeInfo": null,
     "storeTables": null,
     "storeTableSizes": null,

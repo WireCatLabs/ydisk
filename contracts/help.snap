@@ -1,4 +1,4 @@
-ydisk — a new WireCat CLI, started from cli-template
+ydisk — Yandex Disk for your AI agents: chosen folders as searchable text, and the files live
 
 Usage: ydisk <profile> <command> [options]
 Account commands start with your profile, a name you choose; none is ever assumed.

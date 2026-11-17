@@ -1,7 +1,7 @@
 {
   "name": "@wirecat/yandex-disk-cli",
   "version": "0.0.0",
-  "description": "A new WireCat CLI, started from cli-template",
+  "description": "Yandex Disk for your AI agents: search the folders you choose, and work with the files live",
   "license": "Apache-2.0",
   "author": "Viacheslav Ptsarev",
   "repository": {
@@ -59,8 +59,8 @@
     "spec:sync": "node --experimental-strip-types scripts/sync-spec.ts"
   },
   "dependencies": {
-    "@wirecat/cli-base": "0.109.0",
-    "@wirecat/cli-core": "0.687.0",
+    "@wirecat/cli-base": "0.110.0",
+    "@wirecat/cli-core": "0.690.0",
     "commander": "15.0.0",
     "valibot": "1.5.0"
   },
@@ -69,6 +69,7 @@
     "@cspell/dict-en-gb": "5.0.38",
     "@cspell/dict-es-es": "3.0.9",
     "@cspell/dict-ru_ru": "2.3.4",
+    "@scalar/openapi-upgrader": "0.4.6",
     "@types/node": "22.20.5",
     "@vitest/coverage-v8": "5.0.5",
     "@wirecat/cli-testing": "0.7.3",
@@ -77,9 +78,9 @@
     "lefthook": "2.2.2",
     "markdownlint-cli2": "0.24.0",
     "rumdl": "0.3.0",
+    "swagger-converter": "2.1.0",
     "typescript": "7.0.2",
-    "vitest": "5.0.5",
-    "@scalar/openapi-upgrader": "0.4.6"
+    "vitest": "5.0.5"
   },
   "publishConfig": {
     "access": "public"

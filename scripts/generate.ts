@@ -30,17 +30,42 @@ const artifacts = generate(
   ],
   {
     banner: ["Source: spec/ydisk/, checked against provenance.json", "Run: pnpm generate"],
-    // SAMPLE: operation id → { effect, reason } where the HTTP method misleads, as a POST that deletes.
     overrides: {},
-    // SAMPLE: true when the service's POST …/search and …/query only read.
     readingPosts: false,
-    // SAMPLE: command names from the paths; map an operation whose name comes out wrong in `commands`.
-    names: { fromPath: true },
-    // SAMPLE: the permission group, and the body fields or query parameters that delete when true.
-    permissions: { group: "comments", deletingFlags: [] },
-    // SAMPLE: how each read pages, found from the spec; an override's `pagination` wins. `auth` replaces a wrong or
-    // missing sign-in in the spec: { securitySchemes, security, reason }.
+    // drive-cli's words: the path's segments, then what the method does; /v1/disk/ is in every path, so it is left out.
+    // `commands` names those the method misreads: GET /v1/disk would be `list`, the group's own command; a GET that
+    // answers a link is not a list; PUT /v1/disk/resources makes a folder; POST …/upload has Disk fetch a URL.
+    names: {
+      fromPath: true,
+      segments: { disk: "" },
+      commands: {
+        GetDisk: "disk-get",
+        CreateResource: "resources-create",
+        GetResourceDownloadLink: "resources-download-link",
+        GetResourceUploadLink: "resources-upload-link",
+        UploadExternalResource: "resources-upload-url",
+        GetPublicResource: "public-resources-get",
+        GetPublicResourceDownloadLink: "public-resources-download-link",
+        UpdatePublicSettings: "public-settings-update",
+      },
+    },
+    // https://yandex.ru/dev/disk-api/doc/en/reference/delete: `permanently=true` skips the trash. `overwrite=true`
+    // replaces the file at the target on copy, move, restore and the upload link
+    // (https://yandex.ru/dev/disk-api/doc/en/reference/copy, …/move, …/trash-restore, …/upload).
+    // https://yandex.ru/dev/disk-api/doc/en/reference/publish: a public link opens a file to anyone who has it.
+    permissions: {
+      group: "files",
+      deletingFlags: ["permanently", "overwrite"],
+      shares: ["PublishResource", "UnpublishResource", "UpdatePublicSettings"],
+    },
     pagination: true,
+    auth: {
+      securitySchemes: { oauth: { type: "http", scheme: "OAuth" } },
+      security: [{ oauth: [] }],
+      reason:
+        "The Swagger 1.2 source names no sign-in. <https://yandex.ru/dev/disk-api/doc/en/concepts/quickstart>: every " +
+        "request carries `Authorization: OAuth <token>`.",
+    },
   },
 )
 const coverage = artifacts.find((artifact) => artifact.path === "docs/dev/API_COVERAGE.md")

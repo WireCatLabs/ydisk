@@ -1,0 +1,432 @@
+import { randomUUID } from "node:crypto"
+import { createWriteStream } from "node:fs"
+import { link, rename, rm, stat } from "node:fs/promises"
+import { basename, dirname, join, posix } from "node:path"
+import { Readable } from "node:stream"
+import { pipeline } from "node:stream/promises"
+import { CliError } from "@wirecat/cli-base"
+import { annotate } from "@wirecat/cli-base/commands"
+import {
+  commandPath,
+  FETCH,
+  itemOf,
+  listOf,
+  outputFor,
+  ownerOnlyOption,
+  REMOTE_READ,
+  REMOTE_WRITE,
+  renderAnswer,
+  terminalAsker,
+  writesFileOnlyWith,
+} from "@wirecat/cli-core/cli"
+import { fileText } from "@wirecat/cli-core/documents"
+import {
+  guardedWrite,
+  guardFor,
+  keyedGuard,
+  levelFor,
+  newOperationId,
+  readUpload,
+  uploadBlob,
+} from "@wirecat/cli-core/sends"
+import { Command } from "commander"
+import * as v from "valibot"
+import { permissions } from "../config.js"
+import { contextOf, type Disk, diskFor, tokenOf, withDisk } from "../context.js"
+import { IDENTITY } from "../identity.js"
+import { type DiskFile, diskPath, PAGE, skipReason } from "../yandex/source.js"
+import { SERVICE } from "../yandex/transport.js"
+
+const CLI = IDENTITY.command
+/** The key every overwrite and permanent delete also checks, as the api group's `deletingFlags` do. */
+export const DELETE_KEY = "files.delete"
+/** A public link opens the file to anyone who has it. */
+export const SHARE_KEY = "files.share"
+
+const Link = v.object({ href: v.string(), method: v.optional(v.string()) })
+const Answer = v.optional(Link)
+const PublicUrl = v.object({ public_url: v.optional(v.string()) })
+
+/** A 202 names the operation the Disk goes on with; the answer gives its id to check with `api`. */
+const outcomeOf = (link: v.InferOutput<typeof Answer>) => {
+  const id = link?.href.match(/\/operations\/([^/?]+)/u)?.[1]
+  return id ? { status: "in-progress", disk_operation: id } : { status: "done" }
+}
+
+const row = (file: DiskFile) => ({
+  id: file.id,
+  name: file.name,
+  path: file.providerMetadata.path,
+  kind: file.mime === "inode/directory" ? "folder" : "file",
+  mime: file.mime,
+  size: file.size ?? null,
+  modified_at: file.modifiedAt ?? null,
+  url: file.url,
+})
+
+/**
+ * Every write's one path (WC-PERM-13): the profile's level for the command's key and for `extra` refuses or asks
+ * once, the send journal records the attempt, and the answer carries the `operation_id` (WC-OUT-10).
+ */
+const write = async <T>(command: Command, extra: readonly string[], act: (disk: Disk) => Promise<T>) => {
+  const context = contextOf(command)
+  const { settings, env, renderer } = context
+  // Read before any question: a profile with no sign-in fails before the owner is asked anything.
+  const token = tokenOf(command)
+  const key = commandPath(command).replaceAll(" ", ".")
+  const operationId = newOperationId()
+  const levelOf = (one: string) => levelFor(settings.permissions, one, permissions.defaults).level
+  const guard = keyedGuard(
+    (ask) =>
+      guardFor(
+        IDENTITY,
+        { ...settings, sendsPerHour: Number.MAX_SAFE_INTEGER, permissionDefaults: permissions.defaults },
+        renderer.warn,
+        env,
+        ask,
+      ),
+    terminalAsker(command),
+    levelOf,
+    extra,
+  )
+  const request = { chatId: null, kind: "edit" as const, key, operationId }
+  guard.refuse(request)
+  try {
+    const done = await guardedWrite(guard, request, () => context.run((events) => act(diskFor(command, events, token))))
+    renderAnswer(command, outputFor(command), itemOf({ operation_id: operationId, ...done }))
+  } catch (error) {
+    if (error instanceof CliError && error.code === "outcome_unknown")
+      throw new CliError("outcome_unknown", error.message, { ...error.details, operation_id: operationId })
+    throw error
+  }
+}
+
+const read = withDisk
+
+const PATH = "Disk path, like /Documents/plan.pdf or disk:/Documents/plan.pdf"
+
+const listCommand = () =>
+  annotate(new Command("list"), {
+    effects: REMOTE_READ,
+    offline: false,
+    examples: [`${CLI} personal files list`, `${CLI} personal files list --folder /Documents --json`],
+  })
+    .description("list what a Disk folder holds, live, a page at a time")
+    .option("--folder <folder>", "the Disk folder to list, by its path; the top of the Disk without it")
+    .option("--cursor <cursor>", "go on from where the last page stopped; page.next gives it, with the same --folder")
+    .action(async function (this: Command, args: { folder?: string; cursor?: string }) {
+      const path = diskPath(args.folder ?? "/")
+      const offset = args.cursor === undefined ? 0 : Number(args.cursor)
+      if (!Number.isSafeInteger(offset) || offset < 0)
+        throw new CliError("validation_error", "--cursor takes the value page.next gave", { param: "--cursor" })
+      const page = await read(this, (disk) => disk.page(path, offset))
+      renderAnswer(
+        this,
+        outputFor(this),
+        listOf("files list", {
+          items: page.files.map(row),
+          limit: PAGE,
+          has_more: page.more,
+          paging: "cursor",
+          ...(page.more ? { cursor: String(offset + PAGE) } : {}),
+          args: { folder: path },
+        }),
+      )
+    })
+
+const showCommand = () =>
+  annotate(new Command("show"), {
+    effects: REMOTE_READ,
+    offline: false,
+    examples: [`${CLI} personal files show /plan.pdf`],
+  })
+    .description("show one file or folder on the Disk, live")
+    .argument("<path>", PATH)
+    .action(async function (this: Command, path: string) {
+      const file = await read(this, (disk) => disk.byPath(diskPath(path)))
+      renderAnswer(this, outputFor(this), itemOf(row(file)))
+    })
+
+/** The most text a download without --output answers with; the agent asks for a part of a longer file elsewhere. */
+const TEXT_LIMIT = 200_000
+
+const downloadCommand = () =>
+  writesFileOnlyWith(
+    annotate(new Command("download"), {
+      effects: FETCH,
+      offline: false,
+      examples: [
+        `${CLI} personal files download /notes.md --json`,
+        `${CLI} personal files download /plan.pdf --output ./plan.pdf`,
+      ],
+    })
+      .summary("read a Disk file's text, or save the file on this computer")
+      .description(
+        "read a Disk file's text (PDF, docx, xlsx, CSV, TSV, text, Markdown), or with --output save the file itself; " +
+          "the token never goes to the download host",
+      )
+      .argument("<path>", PATH)
+      .addOption(ownerOnlyOption("--output <file>", "save the file here instead of answering its text"))
+      .addOption(ownerOnlyOption("--replace", "replace an existing output file")),
+    "output",
+  ).action(async function (this: Command, path: string, args: { output?: string; replace?: boolean }) {
+    const { env } = contextOf(this)
+    const { output } = args
+    if (output !== undefined) {
+      if (!args.replace && (await exists(output)))
+        throw new CliError("validation_error", "output file already exists; add --replace or choose another path", {
+          param: "--output",
+        })
+    }
+    const answer = await read(this, async (disk) => {
+      const file = await disk.byPath(diskPath(path))
+      if (file.mime === "inode/directory") throw new CliError("validation_error", "a folder cannot be downloaded")
+      if (output === undefined) {
+        const reason = skipReason(file)
+        if (reason) return { ...row(file), text: null, not_read: reason }
+        const text = await fileText(await disk.bytes(file.id, file), file, CLI, env)
+        return { ...row(file), text: text.slice(0, TEXT_LIMIT), truncated: text.length > TEXT_LIMIT }
+      }
+      const bytes = await saveTo(output, await disk.download(file.id, file), args.replace === true)
+      return { path: file.providerMetadata.path, output, bytes }
+    })
+    renderAnswer(this, outputFor(this), itemOf(answer))
+  })
+
+const exists = (path: string) =>
+  stat(path).then(
+    () => true,
+    () => false,
+  )
+
+const outputError = (error: unknown) => {
+  const code = (error as NodeJS.ErrnoException).code
+  if (code === "EEXIST")
+    return new CliError("validation_error", "output file already exists; add --replace or choose another path", {
+      param: "--output",
+    })
+  if (code === "ENOENT" || code === "ENOTDIR" || code === "EACCES" || code === "EISDIR")
+    return new CliError("validation_error", `--output cannot be written there (${code})`, { param: "--output" })
+  return error
+}
+
+/**
+ * Streams the body beside the target and then puts it in place, so a cut download leaves no half file. Without
+ * `replace` the file is linked in, which fails if one appeared at the path during the download, instead of a rename
+ * that would overwrite it.
+ */
+const saveTo = async (path: string, response: Response, replace: boolean): Promise<number> => {
+  const temporary = join(dirname(path), `.${basename(path)}.${randomUUID()}.part`)
+  let size = 0
+  try {
+    await pipeline(
+      Readable.fromWeb(response.body as import("node:stream/web").ReadableStream),
+      async function* (chunks) {
+        for await (const chunk of chunks) {
+          size += (chunk as Uint8Array).length
+          yield chunk
+        }
+      },
+      createWriteStream(temporary, { flags: "wx", mode: 0o600 }),
+    )
+    if (replace) await rename(temporary, path)
+    else await link(temporary, path)
+    return size
+  } catch (error) {
+    throw outputError(error)
+  } finally {
+    await rm(temporary, { force: true })
+  }
+}
+
+const uploadCommand = () =>
+  annotate(new Command("upload"), {
+    effects: REMOTE_WRITE,
+    offline: false,
+    examples: [`${CLI} personal files upload ./plan.pdf --folder /Documents`],
+  })
+    .summary("put a local file on the Disk")
+    .description(
+      "put a local file on the Disk; --replace replaces one already there and asks as files.delete does. Credential " +
+        "files, browser profiles and the WireCat folders are refused",
+    )
+    .argument("<file>", "local file to upload")
+    .option("--folder <folder>", "the Disk folder to put it in, by its path; the top of the Disk without it")
+    .option("--name <name>", "its name on the Disk; the local name without it")
+    .option("--replace", "replace a file already at that path")
+    .addOption(ownerOnlyOption("--allow-any-file", "send a file from a place that is otherwise refused"))
+    .action(async function (
+      this: Command,
+      local: string,
+      args: { folder?: string; name?: string; replace?: boolean; allowAnyFile?: boolean },
+    ) {
+      const { env, environment } = contextOf(this)
+      const { signal } = environment
+      // A path an agent was talked into naming (an SSH key, a browser profile) is refused here, as messengers do.
+      const upload = await readUpload("file", local, { app: IDENTITY, env, anyFile: args.allowAnyFile === true })
+      const target = diskPath(
+        posix.join(diskPath(args.folder ?? "/").replace(/^disk:/u, ""), args.name ?? basename(local)),
+      )
+      await write(this, args.replace ? [DELETE_KEY] : [], async (disk) => {
+        // The link lives 30 minutes and takes the bytes without the token (https://yandex.ru/dev/disk-api/doc/en/reference/upload).
+        const link = await disk.api.send(
+          {
+            method: "GET",
+            path: "disk/resources/upload",
+            query: { path: target, overwrite: String(args.replace === true) },
+          },
+          Link,
+        )
+        // Built before the request: a local file that changed size fails here, before anything is sent.
+        const body = await uploadBlob(upload.source)
+        let response: Response
+        try {
+          response = await disk.links(link.href, { method: "PUT", body, ...(signal ? { signal } : {}) })
+        } catch (error) {
+          // Only a request that never left is safe to call failed; the bytes may have landed otherwise (WC-LIFE-9).
+          if (error instanceof CliError && error.details.sent === false) throw error
+          throw new CliError(
+            "outcome_unknown",
+            `${SERVICE} did not answer the upload; check the file before sending it again`,
+            {
+              retryable: false,
+            },
+          )
+        }
+        if (response.status === 413)
+          throw new CliError("validation_error", `${SERVICE} refuses a file this large for this account`)
+        if (response.status === 507) throw new CliError("validation_error", `the ${SERVICE} is full`)
+        if (response.status >= 400 && response.status < 500)
+          throw new CliError("validation_error", `${SERVICE} refused the upload (HTTP ${response.status})`, {
+            status: response.status,
+          })
+        if (!response.ok)
+          throw new CliError("outcome_unknown", `the ${SERVICE} upload ended with HTTP ${response.status}`, {
+            status: response.status,
+            retryable: false,
+          })
+        return { path: target, status: response.status === 202 ? "in-progress" : "done" }
+      })
+    })
+
+const transfer = (name: "copy" | "move") =>
+  annotate(new Command(name), {
+    effects: REMOTE_WRITE,
+    offline: false,
+    examples: [`${CLI} personal files ${name} /plan.pdf --folder /Archive`],
+  })
+    .summary(`${name} a file or folder on the Disk`)
+    .description(
+      `${name} a file or folder on the Disk into --folder, under --name or its own; --replace replaces what is there ` +
+        "and asks as files.delete does",
+    )
+    .argument("<path>", PATH)
+    .requiredOption("--folder <folder>", "the Disk folder it goes into, by its path")
+    .option("--name <name>", "its name there; its own without it")
+    .option("--replace", "replace what is already there")
+    .action(async function (this: Command, from: string, args: { folder: string; name?: string; replace?: boolean }) {
+      const source = diskPath(from)
+      const target = diskPath(
+        posix.join(
+          diskPath(args.folder).replace(/^disk:/u, ""),
+          args.name ?? posix.basename(source.replace(/^disk:/u, "")),
+        ),
+      )
+      await write(this, args.replace ? [DELETE_KEY] : [], async (disk) => {
+        const link = await disk.api.send(
+          {
+            method: "POST",
+            path: `disk/resources/${name}`,
+            query: { from: source, path: target, overwrite: args.replace ? "true" : "false" },
+          },
+          Answer,
+        )
+        return { from: source, path: target, ...outcomeOf(link) }
+      })
+    })
+
+const simple = (
+  name: string,
+  description: string,
+  request: (path: string) => {
+    method: "PUT" | "DELETE"
+    path: string
+    query: Record<string, string>
+    body?: Record<string, unknown>
+  },
+  extra: readonly string[] = [],
+  after?: (disk: Disk, path: string) => Promise<object>,
+) =>
+  annotate(new Command(name), {
+    effects: REMOTE_WRITE,
+    offline: false,
+    examples: [`${CLI} personal files ${name} /Documents/old.pdf`],
+  })
+    .description(description)
+    .argument("<path>", name === "restore" ? "its path in the trash, like trash:/old.pdf" : PATH)
+    .action(async function (this: Command, path: string) {
+      await write(this, extra, async (disk) => {
+        const sent = request(path)
+        const link = await disk.api.send(sent, Answer)
+        const target = sent.query.path as string
+        return { path: target, ...outcomeOf(link), ...(after ? await after(disk, target) : {}) }
+      })
+    })
+
+export const filesCommand = (): Command =>
+  annotate(new Command("files"), { effects: REMOTE_READ })
+    .description("the files on Yandex Disk, live: list, read, download, upload and change them")
+    .addCommand(listCommand())
+    .addCommand(showCommand())
+    .addCommand(downloadCommand())
+    .addCommand(uploadCommand())
+    .addCommand(transfer("copy"))
+    .addCommand(transfer("move"))
+    .addCommand(
+      simple("create", "create a folder on the Disk at this path", (path) => ({
+        method: "PUT",
+        path: "disk/resources",
+        query: { path: diskPath(path) },
+      })),
+    )
+    .addCommand(
+      simple("delete", "move a file or folder to the Disk's trash; files restore brings it back", (path) => ({
+        method: "DELETE",
+        path: "disk/resources",
+        query: { path: diskPath(path), permanently: "false" },
+      })),
+    )
+    .addCommand(
+      simple("restore", "bring a file or folder back from the Disk's trash", (path) => ({
+        method: "PUT",
+        path: "disk/trash/resources/restore",
+        query: { path: diskPath(path.replace(/^trash:/u, "")).replace(/^disk:/u, "trash:") },
+      })),
+    )
+    .addCommand(
+      simple(
+        "publish",
+        "open a file or folder to anyone with its public link; asks as files.share does",
+        // The spec marks the body as required; an empty one keeps Yandex's default settings.
+        (path) => ({ method: "PUT", path: "disk/resources/publish", query: { path: diskPath(path) }, body: {} }),
+        [SHARE_KEY],
+        // The owner asked for the link to hand it on; it is answered once and never kept.
+        // The link exists once the publish answered; a failed read of it leaves public_url null, not a failure.
+        async (disk, path) => ({
+          public_url: await disk.api
+            .send({ method: "GET", path: "disk/resources", query: { path, fields: "public_url" } }, PublicUrl)
+            .then(
+              (answer) => answer.public_url ?? null,
+              () => null,
+            ),
+        }),
+      ),
+    )
+    .addCommand(
+      simple(
+        "unpublish",
+        "close a file's or folder's public link; asks as files.share does",
+        (path) => ({ method: "PUT", path: "disk/resources/unpublish", query: { path: diskPath(path) } }),
+        [SHARE_KEY],
+      ),
+    )

@@ -1,54 +1,69 @@
 import { createHash } from "node:crypto"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
-import {
-  type ApiModel,
-  adaptOpenApi,
-  mergeOpenApi,
-  patchSpec,
-  type SpecPatch,
-  upgradeToOpenApi3,
-} from "@wirecat/cli-base/codegen"
+import { type ApiModel, adaptOpenApi, patchSpec, type SpecPatch, upgradeToOpenApi3 } from "@wirecat/cli-base/codegen"
 
 interface Provenance {
   sources: { name: string; url: string; file: string; sha256: string }[]
 }
 
-// SAMPLE: corrections to the service's document, each with the reason from its documentation or a captured answer.
+interface Listing {
+  basePath: string
+  apis: { path: string; description?: string | null }[]
+}
+
+const LISTING = "listing"
+
+// Entries of the resource listing the CLI does not read, each with why.
+const LEFT_OUT: Readonly<Record<string, string>> = {
+  "/v1/data/admin/settings/{settings_name}/organizations/{org_id}":
+    "Yandex 360 organization settings for admins, not a person's Disk; <https://yandex.ru/dev/disk-api/doc/en/> does not describe it",
+}
+
+// Corrections to the service's document, each with the reason from its documentation or a captured answer.
 const PATCHES: SpecPatch[] = []
 
 /**
- * The documents as committed, checked against provenance.json, a Swagger one upgraded to OpenAPI 3, joined when there
- * are several, then corrected.
+ * The Swagger 1.2 listing and its declarations as committed, checked against provenance.json, upgraded to OpenAPI 3,
+ * then corrected.
  */
 export const specModel = async (root: string): Promise<{ model: ApiModel; notes: string[] }> => {
   const dir = join(root, "spec/ydisk")
   const provenance = JSON.parse(readFileSync(join(dir, "provenance.json"), "utf8")) as Provenance
-  const sources = await Promise.all(
-    provenance.sources.map(async (source) => {
+  const documents = new Map(
+    provenance.sources.map((source) => {
       const text = readFileSync(join(dir, source.file), "utf8")
       if (createHash("sha256").update(text).digest("hex") !== source.sha256)
         throw new Error(`spec/ydisk/${source.file} does not match provenance.json; run pnpm spec:sync`)
-      const document = JSON.parse(text) as { openapi?: unknown }
-      return {
-        name: source.name,
-        url: source.url,
-        document: document.openapi ? document : await upgradeToOpenApi3(document),
-      }
+      return [source.name, { url: source.url, document: JSON.parse(text) as unknown }]
     }),
   )
-  const [only] = sources
-  const merged =
-    sources.length === 1 && only
-      ? { document: only.document, notes: [] as string[] }
-      : (() => {
-          const { document, report } = mergeOpenApi(sources, { title: "ydisk", version: "1" })
-          return { document, notes: [...report.merged, ...report.renamed].map((line) => `merged: ${line}`) }
-        })()
-  const { document, applied } = patchSpec(merged.document, { patches: PATCHES })
+  const listed = documents.get(LISTING)
+  if (!listed) throw new Error(`spec/ydisk/provenance.json lists no source named "${LISTING}"`)
+  const listing = listed.document as Listing
+  // Each declaration is served at the listing's basePath followed by its entry's path, which keys it.
+  const declarations = Object.fromEntries(
+    [...documents]
+      .filter(([name]) => name !== LISTING)
+      .map(([, { url, document }]) => [decodeURI(url.slice(listing.basePath.length)), document]),
+  )
+  const unknown = listing.apis.filter(({ path }) => !(path in declarations) && !(path in LEFT_OUT))
+  if (unknown.length)
+    throw new Error(
+      `The listing has entries neither synced nor left out: ${unknown.map(({ path }) => path).join(", ")}`,
+    )
+  const read = { ...listing, apis: listing.apis.filter(({ path }) => path in declarations) }
+  const upgraded = await upgradeToOpenApi3(read, declarations)
+  const { document, applied } = patchSpec(upgraded, { patches: PATCHES })
   const model = adaptOpenApi(document, {
     sourceUrl: provenance.sources.map((source) => source.url).join(" "),
     sourceRevision: provenance.sources.map((source) => source.sha256).join(" "),
   })
-  return { model, notes: [...merged.notes, ...applied.map(({ pointer, reason }) => `patched ${pointer}: ${reason}`)] }
+  return {
+    model,
+    notes: [
+      ...Object.entries(LEFT_OUT).map(([path, reason]) => `left out ${path}: ${reason}`),
+      ...applied.map(({ pointer, reason }) => `patched ${pointer}: ${reason}`),
+    ],
+  }
 }

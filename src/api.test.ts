@@ -5,7 +5,7 @@ import { apiFlagOf, manifestBaseUrl } from "@wirecat/cli-core/cli"
 import { afterEach, expect, it } from "vitest"
 import { API } from "./config.js"
 import { definitions } from "./generated/definitions.js"
-import { FAKE_TOKEN } from "./testing/fake-comments.js"
+import { FAKE_TOKEN } from "./testing/fake-disk.js"
 import { runCli } from "./testing/harness.js"
 
 const configFile = join(process.env.YDISK_CONFIG_DIR ?? "", "config.json")
@@ -20,19 +20,26 @@ const fake = () =>
     operations: API.manifest.operations,
     definitions,
     baseUrl: manifestBaseUrl(API.manifest),
-    // SAMPLE: the header the spec's sign-in names; an `apiKey` scheme sends the bare token in its own header.
-    auth: { header: "authorization", value: `Bearer ${FAKE_TOKEN}` },
+    auth: { header: "authorization", value: `OAuth ${FAKE_TOKEN}` },
   })
 
 type Operation = (typeof API.manifest.operations)[number]
 
-const deleteKeys = [
+const operationOf = (command: string): Operation => {
+  const found = API.manifest.operations.find((operation) => operation.command === command)
+  if (!found) throw new Error(`no operation ${command}`)
+  return found
+}
+
+const keysOf = (suffix: string) => [
   ...new Set(
     API.manifest.operations.flatMap((operation) =>
-      (operation.permissions ?? []).map((permission) => permission.key).filter((key) => key.endsWith(".delete")),
+      (operation.permissions ?? []).map((permission) => permission.key).filter((key) => key.endsWith(suffix)),
     ),
   ),
 ]
+const deleteKeys = keysOf(".delete")
+const shareKeys = keysOf(".share")
 
 const argsOf = (operation: Operation) => [
   ...operation.parameters
@@ -44,8 +51,10 @@ const argsOf = (operation: Operation) => [
   ...(operation.effect === "destructive" ? ["--yes"] : []),
 ]
 
-it("sends every operation the spec offers as the spec describes it, with the profile's token", async () => {
-  withPermissions({ api: "allow", ...Object.fromEntries(deleteKeys.map((key) => [key, "allow"])) })
+const allowed = () => Object.fromEntries([...deleteKeys, ...shareKeys].map((key) => [key, "allow"]))
+
+it("sends every operation the spec offers as the spec describes it, with the profile's OAuth token", async () => {
+  withPermissions({ api: "allow", ...allowed() })
   const service = fake()
   expect(API.manifest.operations.length).toBeGreaterThan(0)
   for (const operation of API.manifest.operations) {
@@ -54,17 +63,47 @@ it("sends every operation the spec offers as the spec describes it, with the pro
   }
   expect(service.refusals).toEqual([])
   expect(service.calls).toHaveLength(API.manifest.operations.length)
+  for (const call of service.calls) {
+    expect(call.url.host).toBe("cloud-api.yandex.net")
+    expect(call.url.pathname).toMatch(/^\/v1\/disk(\/|$)/)
+    expect(call.headers.get("authorization")).toBe(`OAuth ${FAKE_TOKEN}`)
+  }
 })
 
 it("a delete through api checks the manifest's delete key too, before anything is sent", async () => {
-  expect(deleteKeys.length).toBeGreaterThan(0)
-  withPermissions({ api: "allow", ...Object.fromEntries(deleteKeys.map((key) => [key, "deny"])) })
+  expect(deleteKeys).toEqual(["files.delete"])
+  withPermissions({ api: "allow", "files.delete": "deny" })
   const service = fake()
   const destructive = API.manifest.operations.filter((operation) => operation.effect === "destructive")
-  expect(destructive.length).toBeGreaterThan(0)
+  expect(destructive.map((operation) => operation.command).sort()).toEqual([
+    "resources-delete",
+    "trash-resources-delete",
+  ])
   for (const operation of destructive) {
     const ran = await runCli(["personal", "api", operation.command, ...argsOf(operation), "--json"], { service })
     expect(ran.json()).toMatchObject({ error: { code: "permission_error" } })
   }
+  expect(service.calls).toEqual([])
+})
+
+it("overwrite=true asks by the delete key, and the same call without it goes through", async () => {
+  withPermissions({ api: "allow", "files.delete": "deny" })
+  const service = fake()
+  const copy = ["personal", "api", "resources-copy", ...argsOf(operationOf("resources-copy"))]
+  const refused = await runCli([...copy, "--overwrite", "true", "--json"], { service })
+  expect(refused.json()).toMatchObject({ error: { code: "permission_error" } })
+  expect(service.calls).toEqual([])
+  const sent = await runCli([...copy, "--json"], { service })
+  expect(sent.code, sent.err).toBe(0)
+  expect(service.calls).toHaveLength(1)
+})
+
+it("a public link asks by the share key", async () => {
+  expect(shareKeys).toEqual(["files.share"])
+  withPermissions({ api: "allow", "files.share": "deny" })
+  const service = fake()
+  const publish = operationOf("resources-publish")
+  const ran = await runCli(["personal", "api", publish.command, ...argsOf(publish), "--json"], { service })
+  expect(ran.json()).toMatchObject({ error: { code: "permission_error" } })
   expect(service.calls).toEqual([])
 })
