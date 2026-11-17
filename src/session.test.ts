@@ -158,3 +158,18 @@ it("mcp serve runs a read for an agent with the run's keyring", async () => {
     expect(await mcp.close()).toBe(0)
   }
 })
+
+it("doctor --online asks the Disk whose the profile's token is, and says so when there is none", async () => {
+  withPermissions({})
+  const service = fakeDisk()
+  const checked = await runCli(["personal", "doctor", "--online", "--json"], { service })
+  expect(checked.code, checked.err).toBe(0)
+  expect(checked.json().item).toMatchObject({ online: { ok: true, user: { id: "1000", login: "test-person" } } })
+  expect(
+    service.calls.filter((call) => call.url.host === "cloud-api.yandex.net").map((call) => call.url.pathname),
+  ).toEqual(["/v1/disk"])
+  const unsigned = await runCli(["personal", "doctor", "--online", "--json"], { service, keyring: memoryKeyring() })
+  expect(unsigned.code, unsigned.err).toBe(0)
+  expect(unsigned.json().item).toMatchObject({ online: { ok: false, error_code: "authentication_error" } })
+  expect(service.calls.filter((call) => call.url.host === "cloud-api.yandex.net")).toHaveLength(1)
+})

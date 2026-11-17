@@ -67,9 +67,9 @@ ydisk session start [options]
 
 | Option | What it does |
 |---|---|
-| `--credential-storage <storage>` | where the token is kept: keyring, which falls back to a private file by itself, or file. Default: `keyring`. |
+| `--credential-storage <storage>` | where the token is kept: keyring, which falls back to a private file by itself when no keyring works; file skips the keyring, so keep it for a computer that has none. Default: `keyring`. |
 
-**Example:** `ydisk personal session start`, `ydisk personal session start --credential-storage file`
+**Example:** `ydisk personal session start`
 
 ### `ydisk session status`
 
@@ -155,6 +155,8 @@ ydisk folders browse [options]
 |---|---|
 | `--folder <folder>` | the Disk folder to list inside, by its path; the top of the Disk without it. |
 | `--cursor <cursor>` | go on from where the last page stopped; page.next gives it, with the same --folder. |
+
+**Next usually:** `ydisk documents show <document>`, `ydisk documents context <document>`, `ydisk tags list <document> [query]`
 
 **Example:** `ydisk personal folders browse`, `ydisk personal folders browse --folder /Work --json`
 
@@ -963,6 +965,8 @@ ydisk files list [options]
 | `--folder <folder>` | the Disk folder to list, by its path; the top of the Disk without it. |
 | `--cursor <cursor>` | go on from where the last page stopped; page.next gives it, with the same --folder. |
 
+**Next usually:** `ydisk documents show <document>`, `ydisk documents context <document>`, `ydisk tags list <document> [query]`
+
 **Example:** `ydisk personal files list`, `ydisk personal files list --folder /Documents --json`
 
 ### `ydisk files show`
@@ -976,6 +980,8 @@ ydisk files show <path>
 | Argument | | What it is |
 |---|---|---|
 | `path` | required | Disk path, like /Documents/plan.pdf or disk:/Documents/plan.pdf. |
+
+**Next usually:** `ydisk documents show <document>`, `ydisk documents context <document>`, `ydisk tags list <document> [query]`
 
 **Example:** `ydisk personal files show /plan.pdf`
 
@@ -997,6 +1003,8 @@ ydisk files download <path> [options]
 |---|---|
 | `--output <file>` | save the file here instead of answering its text. |
 | `--replace` | replace an existing output file. |
+
+**Next usually:** `ydisk documents show <document>`, `ydisk documents context <document>`, `ydisk tags list <document> [query]`
 
 **Example:** `ydisk personal files download /notes.md --json`, `ydisk personal files download /plan.pdf --output ./plan.pdf`
 
@@ -1081,7 +1089,7 @@ ydisk files create <path>
 |---|---|---|
 | `path` | required | Disk path, like /Documents/plan.pdf or disk:/Documents/plan.pdf. |
 
-**Example:** `ydisk personal files create /Documents/old.pdf`
+**Example:** `ydisk personal files create /Documents/Reports`
 
 ### `ydisk files delete`
 
@@ -1113,7 +1121,7 @@ ydisk files restore <path>
 |---|---|---|
 | `path` | required | its path in the trash, like trash:/old.pdf. |
 
-**Example:** `ydisk personal files restore /Documents/old.pdf`
+**Example:** `ydisk personal files restore trash:/old.pdf`
 
 ### `ydisk files publish`
 
@@ -1129,7 +1137,7 @@ ydisk files publish <path>
 |---|---|---|
 | `path` | required | Disk path, like /Documents/plan.pdf or disk:/Documents/plan.pdf. |
 
-**Example:** `ydisk personal files publish /Documents/old.pdf`
+**Example:** `ydisk personal files publish /Documents/plan.pdf`
 
 ### `ydisk files unpublish`
 
@@ -1145,7 +1153,7 @@ ydisk files unpublish <path>
 |---|---|---|
 | `path` | required | Disk path, like /Documents/plan.pdf or disk:/Documents/plan.pdf. |
 
-**Example:** `ydisk personal files unpublish /Documents/old.pdf`
+**Example:** `ydisk personal files unpublish /Documents/plan.pdf`
 
 ## `ydisk api`
 

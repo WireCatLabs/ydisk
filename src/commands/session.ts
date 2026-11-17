@@ -28,9 +28,8 @@ import { configuration } from "../config.js"
 import { contextOf, diskFor, refuseOffline, withDisk } from "../context.js"
 import { IDENTITY, SERVICE } from "../identity.js"
 
-// `session start | status | end | list` is every provider CLI's sign-in (WC-ACCT-12). Keep it; replace the token
-// prompt and the `me` check with your service's. A service with OAuth signs in through cli-core's oauth module
-// instead (WC-SECR-22); see gcal-cli's src/commands/session.ts.
+// Yandex shows the OAuth token to the person in the browser (https://yandex.ru/dev/id/doc/en/tokens/debug-token), so
+// `session start` takes it pasted, as an API token, rather than through cli-core's oauth module.
 
 const CLI = IDENTITY.command
 
@@ -47,7 +46,7 @@ const startCommand = () =>
       effects: FETCH,
       lifetime: "interactive",
       mcp: false,
-      examples: [`${CLI} personal session start`, `${CLI} personal session start --credential-storage file`],
+      examples: [`${CLI} personal session start`],
     }),
   )
     .summary(`sign in to ${SERVICE} with an API token`)
@@ -57,7 +56,8 @@ const startCommand = () =>
     )
     .option(
       "--credential-storage <storage>",
-      "where the token is kept: keyring, which falls back to a private file by itself, or file",
+      "where the token is kept: keyring, which falls back to a private file by itself when no keyring works; file " +
+        "skips the keyring, so keep it for a computer that has none",
       storageOf,
       "keyring" as TokenStorage,
     )
