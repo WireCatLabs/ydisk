@@ -1,6 +1,6 @@
 // Renders banner.html to the README banner and the social preview: pnpm docs:images
 import { spawnSync } from "node:child_process"
-import { mkdtempSync } from "node:fs"
+import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
@@ -25,4 +25,5 @@ const result = spawnSync(
   ],
   { stdio: "inherit" },
 )
+rmSync(profile, { recursive: true, force: true })
 process.exitCode = result.status ?? 1

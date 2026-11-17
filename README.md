@@ -47,7 +47,7 @@ Agent:  (runs ydisk personal search "lease flat")
         /Documents/Flat/lease-2026.pdf, signed by Alice Example on 12.03.
         A public link lets anyone who has it open the file. Make one?
 You:    Yes.
-Agent:  (runs ydisk personal files publish /Documents/Flat/lease-2026.pdf)
+Agent:  (runs ydisk personal files publish /Documents/Flat/lease-2026.pdf --yes)
         Here is the link. Say "close it" when Bob has the file.
 ```
 
@@ -79,7 +79,7 @@ You need Node.js 22.16 or a later 22.x, or 24 or later. Try it without installin
 `npx @wirecat/yandex-disk-cli --help`.
 
 Sign in once with a Yandex OAuth token. The token is kept in the system keyring, or in a private file only you can
-read where no keyring works; never in an argument or the output.
+read where no keyring works. It is never in an argument or the output.
 
 1. Register an app at [oauth.yandex.com/client/new](https://oauth.yandex.com/client/new/), platform "Web services",
    redirect URI `https://oauth.yandex.ru/verification_code`, with the access `cloud_api:disk.read`,
@@ -96,9 +96,9 @@ ydisk personal sync
 ydisk personal search "quarterly budget"
 ```
 
-`personal` is a name you choose for this account. You can add `work` or any other later; no profile is ever assumed.
+`personal` is a name you choose for this account. You can add `work` or any other later. No profile is ever assumed.
 Yandex says a token lasts several months and is extended while it is used
-([Yandex ID](https://yandex.ru/dev/id/doc/en/concepts/ya-oauth-intro)); when Yandex stops accepting it, sign in
+([Yandex ID](https://yandex.ru/dev/id/doc/en/concepts/ya-oauth-intro)). When Yandex stops accepting it, sign in
 again.
 
 More: [installation](https://github.com/WireCatLabs/ydisk/blob/main/docs/installation.md)
@@ -149,7 +149,7 @@ ydisk personal files download /Documents/notes.md                  # its text
 ydisk personal files download /Documents/plan.pdf --output ./plan.pdf
 ydisk personal files upload ./notes.md --folder /Documents
 ydisk personal files move /Documents/old.pdf --folder /Archive
-ydisk personal files delete /Documents/old.pdf       # to the Disk's trash; files restore brings it back
+ydisk personal files delete /Documents/old.pdf       # to the Disk's trash, files restore brings it back
 ydisk personal files publish /Documents/plan.pdf     # a public link: anyone with it can open the file
 ydisk personal files unpublish /Documents/plan.pdf
 ```
