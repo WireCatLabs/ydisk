@@ -12,6 +12,6 @@ Effects: `read` changes nothing; `write` changes the service; `destructive` dele
 |---|---|---|---|---|---|
 | disk | `ydisk skill show api-disk` | 1 | 1 | 0 | 0 |
 | disk/operations/{operation\_id} | `ydisk skill show api-disk-operations-operation-id` | 1 | 1 | 0 | 0 |
-| disk/public/resources | `ydisk skill show api-disk-public-resources` | 4 | 2 | 2 | 0 |
-| disk/resources | `ydisk skill show api-disk-resources` | 14 | 6 | 7 | 1 |
+| disk/public/resources | `ydisk skill show api-disk-public-resources` | 3 | 1 | 2 | 0 |
+| disk/resources | `ydisk skill show api-disk-resources` | 12 | 4 | 7 | 1 |
 | disk/trash/resources | `ydisk skill show api-disk-trash-resources` | 3 | 1 | 1 | 1 |

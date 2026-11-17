@@ -2,17 +2,6 @@
 
 # Yandex Disk API: disk/public/resources
 
-## `ydisk api public-resources-download-link [options]`
-
-- What: Получить ссылку на скачивание публичного ресурса
-- Call: `GET /v1/disk/public/resources/download`, effect: read
-
-| Flag | Required | What |
-|---|---|---|
-| `--public-key <value>` | yes | Ключ или публичный URL ресурса. |
-| `--fields <value>` | no | Список возвращаемых атрибутов. |
-| `--path <value>` | no | Путь к ресурсу в публичной папке. |
-
 ## `ydisk api public-resources-get [options]`
 
 - What: Получить метаинформацию о публичном файле или каталоге

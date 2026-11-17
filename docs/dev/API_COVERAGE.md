@@ -46,7 +46,7 @@ Run: pnpm generate
 
 ## Sign-in
 
-Not from the source: The Swagger 1.2 source names no sign-in. https://yandex.ru/dev/disk-api/doc/en/concepts/quickstart: every request carries `Authorization: OAuth <token>`.
+Not from the source: The Swagger 1.2 source names no sign-in. <https://yandex.ru/dev/disk-api/doc/en/concepts/quickstart>: every request carries `Authorization: OAuth <token>`.
 
 ## Permission keys
 
@@ -64,4 +64,4 @@ Not from the source: The Swagger 1.2 source names no sign-in. https://yandex.ru/
 
 ## Spec corrections
 
-- left out /v1/data/admin/settings/{settings_name}/organizations/{org_id}: Yandex 360 organization settings for admins, not a person's Disk; https://yandex.ru/dev/disk-api/doc/en/ does not describe it
+- left out /v1/data/admin/settings/{settings_name}/organizations/{org_id}: Yandex 360 organization settings for admins, not a person's Disk; <https://yandex.ru/dev/disk-api/doc/en/> does not describe it

@@ -3,10 +3,18 @@
 What WireCat CLIs share — the keyring, permissions, MCP and what never reaches a log — is on the
 [shared security page](https://wirecat.dev/en/docs/security). This page keeps only what is particular to `ydisk`.
 
-`ydisk` keeps its settings in `config.json` and its state in the folders `ydisk doctor` shows. Its one service is
-the sample, Example Comments, whose address never resolves. `session start` keeps the service's token in the OS
-keyring, or in a private file where no keyring works; the token goes only into the request's Authorization header,
-never into an address, an answer, a run record or the send journal.
+`ydisk` keeps its settings in `config.json` and its state in the folders `ydisk doctor` shows. It talks to one
+service, Yandex Disk's API at `cloud-api.yandex.net`. `session start` keeps the Yandex OAuth token in the OS keyring,
+or in a private file where no keyring works; the token goes only into the Authorization header of a request to
+`cloud-api.yandex.net`, never into an address, an answer, a run record or the send journal. Downloads and uploads go
+to the link Yandex gives (`downloader.disk.yandex.ru`, `*.disk.yandex.net`) without the token, and those links are
+never printed.
+
+Over MCP an agent reads a file's text with `files download` but cannot save it to a path: `--output` is the owner's
+only. `files upload` refuses credential files, browser profiles and the WireCat folders unless the owner adds
+`--allow-any-file`. `files delete`, `--replace` and the public-link commands ask first at a terminal; over MCP only
+`deny` stops them, so set `files.delete=deny` and `files.share=deny` for an agent that should not, and `files.upload=deny` for one that
+should put no local file on the Disk.
 
 `ydisk personal mcp serve --http` listens on `127.0.0.1` only, for browser apps that reach it through your own
 tunnel. Each app logs in with a one-time code, and the server keeps a hash of each login it gives, in the state

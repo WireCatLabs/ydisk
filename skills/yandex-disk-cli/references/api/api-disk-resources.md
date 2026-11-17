@@ -40,16 +40,6 @@
 | `--md5 <value>` | no | md5 удаляемого файла. |
 | `--permanently <value>` | no | Удалить ресурс не помещая в Корзину. |
 
-## `ydisk api resources-download-link [options]`
-
-- What: Получить ссылку на скачивание файла
-- Call: `GET /v1/disk/resources/download`, effect: read
-
-| Flag | Required | What |
-|---|---|---|
-| `--path <value>` | yes | Путь к ресурсу. |
-| `--fields <value>` | no | Список возвращаемых атрибутов. |
-
 ## `ydisk api resources-files-list [options]`
 
 - What: Получить список файлов упорядоченный по имени
@@ -165,18 +155,6 @@
 | `--fields <value>` | no | Список возвращаемых атрибутов. |
 | `--body <json>` | no | the request body as JSON; - reads it from stdin |
 | `--body-file <path>` | no | the request body from a JSON file; - is stdin |
-
-## `ydisk api resources-upload-link [options]`
-
-- What: Получить ссылку для загрузки файла
-- Call: `GET /v1/disk/resources/upload`, effect: read
-- Permission keys: `files.delete`
-
-| Flag | Required | What |
-|---|---|---|
-| `--path <value>` | yes | Путь к загружаемому файлу на Диске. |
-| `--fields <value>` | no | Список возвращаемых атрибутов. |
-| `--overwrite <value>` | no | Перезаписать существующий файл. |
 
 ## `ydisk api resources-upload-url [options]`
 
