@@ -1,4 +1,4 @@
-import { CliError } from "@wirecat/cli-base"
+import { CliError, isCliError } from "@wirecat/cli-base"
 import { annotate } from "@wirecat/cli-base/commands"
 import { listOf, nextUsually, REMOTE_READ } from "@wirecat/cli-core/cli"
 import { documentIngestion } from "@wirecat/cli-core/documents"
@@ -35,8 +35,14 @@ const WORDS: DocumentWords = {
 
 /** Whether a folder holds a folder; null when its first page has none and more pages exist, so it is not known. */
 const hasFolders = async (disk: Disk, folder: DiskFile) => {
-  const first = await disk.page(folder.providerMetadata.path, 0)
-  return first.files.some(isFolder) ? true : first.more ? null : false
+  try {
+    const first = await disk.page(folder.providerMetadata.path, 0)
+    return first.files.some(isFolder) ? true : first.more ? null : false
+  } catch (error) {
+    // One folder the token cannot list, or a busy moment, leaves only its own answer unknown; a refused token ends all.
+    if (isCliError(error) && error.code === "authentication_error") throw error
+    return null
+  }
 }
 
 const external = (id: string) => `${id}.md`

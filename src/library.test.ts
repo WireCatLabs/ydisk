@@ -231,6 +231,21 @@ describe("folders browse", () => {
     })
   })
 
+  it("leaves has_children null for a folder it cannot list, and keeps the others", async () => {
+    const disk = tree()
+    disk.put("disk:/Work/Deep/Inner/old.txt", "two folders down")
+    disk.put("disk:/Work/Locked/x.txt", "x")
+    disk.deny("disk:/Work/Locked", 403)
+    const answer = await runCli(["personal", "folders", "browse", "--folder", "/Work", "--json"], { service: disk })
+    expect(answer.code, answer.err).toBe(0)
+    const items = answer.json().items as { name: string; has_children: boolean | null }[]
+    expect(Object.fromEntries(items.map((item) => [item.name, item.has_children]))).toEqual({
+      Deep: true,
+      Locked: null,
+      Notes: false,
+    })
+  })
+
   it("leaves has_children null, and asks for no listing inside, on a level with more folders than the burst", async () => {
     const disk = tree()
     for (let n = 0; n <= PACE.burst; n++) disk.put(`disk:/Many/f${String(n).padStart(2, "0")}/x.txt`, "x")
@@ -303,11 +318,19 @@ describe("account remove", () => {
     await runCli(["personal", "session", "start", "--json"], { service: disk, env, keyring, stdin: FAKE_TOKEN })
     await runCli(["personal", "folders", "add", "/Work", "--json"], { service: disk, env, keyring })
     await runCli(["personal", "sync", "--json"], { service: disk, env, keyring })
+    const rows = async () => {
+      const info = (await runCli(["store", "info", "--json"], { env, keyring })).json().item as {
+        rows: Record<string, number>
+      }
+      return info.rows.documents ?? 0
+    }
+    expect(await rows()).toBeGreaterThan(0)
     const answer = await runCli(["personal", "account", "remove", "--delete-data", "--yes", "--json"], {
       keyring,
       env,
     })
     expect(answer.code, answer.err).toBe(0)
     expect(documentProfile(IDENTITY, { ...process.env, ...env }, "personal").folders().roots).toEqual([])
+    expect(await rows()).toBe(0)
   })
 })
