@@ -156,7 +156,7 @@ ydisk folders browse [options]
 | `--folder <folder>` | the Disk folder to list inside, by its path; the top of the Disk without it. |
 | `--cursor <cursor>` | go on from where the last page stopped; page.next gives it, with the same --folder. |
 
-**Next usually:** `ydisk documents show <document>`, `ydisk documents context <document>`, `ydisk tags list <document> [query]`
+**Next usually:** `ydisk folders add <folder>`
 
 **Example:** `ydisk personal folders browse`, `ydisk personal folders browse --folder /Work --json`
 
@@ -965,7 +965,7 @@ ydisk files list [options]
 | `--folder <folder>` | the Disk folder to list, by its path; the top of the Disk without it. |
 | `--cursor <cursor>` | go on from where the last page stopped; page.next gives it, with the same --folder. |
 
-**Next usually:** `ydisk documents show <document>`, `ydisk documents context <document>`, `ydisk tags list <document> [query]`
+**Next usually:** `ydisk files show <path>`, `ydisk files download <path>`
 
 **Example:** `ydisk personal files list`, `ydisk personal files list --folder /Documents --json`
 
@@ -981,7 +981,7 @@ ydisk files show <path>
 |---|---|---|
 | `path` | required | Disk path, like /Documents/plan.pdf or disk:/Documents/plan.pdf. |
 
-**Next usually:** `ydisk documents show <document>`, `ydisk documents context <document>`, `ydisk tags list <document> [query]`
+**Next usually:** `ydisk files download <path>`
 
 **Example:** `ydisk personal files show /plan.pdf`
 
@@ -1003,8 +1003,6 @@ ydisk files download <path> [options]
 |---|---|
 | `--output <file>` | save the file here instead of answering its text. |
 | `--replace` | replace an existing output file. |
-
-**Next usually:** `ydisk documents show <document>`, `ydisk documents context <document>`, `ydisk tags list <document> [query]`
 
 **Example:** `ydisk personal files download /notes.md --json`, `ydisk personal files download /plan.pdf --output ./plan.pdf`
 

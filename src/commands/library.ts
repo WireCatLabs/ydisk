@@ -1,6 +1,6 @@
 import { CliError } from "@wirecat/cli-base"
 import { annotate } from "@wirecat/cli-base/commands"
-import { listOf, REMOTE_READ } from "@wirecat/cli-core/cli"
+import { listOf, nextUsually, REMOTE_READ } from "@wirecat/cli-core/cli"
 import { documentIngestion } from "@wirecat/cli-core/documents"
 import { type DocumentWords, documentLibraryCommands } from "@wirecat/cli-core/documents/cli"
 import type { Command } from "commander"
@@ -82,45 +82,49 @@ export const libraryCommands = (): Command[] =>
       reference,
     }),
     browse: (folders, tools) => {
-      annotate(folders.command("browse"), {
-        effects: REMOTE_READ,
-        offline: false,
-        output: { entity: "document", view: "disk_folder" },
-        examples: [
-          `${IDENTITY.command} personal folders browse`,
-          `${IDENTITY.command} personal folders browse --folder /Work --json`,
-        ],
-      })
-        .description("list Disk folders one level at a time, live, to choose one for folders add")
-        .option("--folder <folder>", "the Disk folder to list inside, by its path; the top of the Disk without it")
-        .option(
-          "--cursor <cursor>",
-          "go on from where the last page stopped; page.next gives it, with the same --folder",
-        )
-        .action(async (args: { folder?: string; cursor?: string }) => {
-          const path = diskPath(args.folder ?? "/")
-          const offset = args.cursor === undefined ? 0 : Number(args.cursor)
-          if (!Number.isSafeInteger(offset) || offset < 0)
-            throw new CliError("validation_error", "--cursor takes the value page.next gave", { param: "--cursor" })
-          const chosen = new Set(tools.roots())
-          // The source `source` above built, typed by cli-core only as its documents part.
-          const page = await tools.withSource((source) => (source as Disk).page(path, offset))
-          tools.output(
-            listOf("folders browse", {
-              items: page.files.filter(isFolder).map((file) => ({
-                id: file.id,
-                name: file.name,
-                path: file.providerMetadata.path,
-                added: chosen.has(file.id),
-              })),
-              limit: PAGE,
-              has_more: page.more,
-              paging: "cursor",
-              ...(page.more ? { cursor: String(offset + PAGE) } : {}),
-              args: { folder: path },
-            }),
-          )
+      // A browsed folder is chosen with folders add; the store's commands do not know it yet.
+      nextUsually(
+        annotate(folders.command("browse"), {
+          effects: REMOTE_READ,
+          offline: false,
+          output: { entity: "disk_item", view: "folder" },
+          examples: [
+            `${IDENTITY.command} personal folders browse`,
+            `${IDENTITY.command} personal folders browse --folder /Work --json`,
+          ],
         })
+          .description("list Disk folders one level at a time, live, to choose one for folders add")
+          .option("--folder <folder>", "the Disk folder to list inside, by its path; the top of the Disk without it")
+          .option(
+            "--cursor <cursor>",
+            "go on from where the last page stopped; page.next gives it, with the same --folder",
+          )
+          .action(async (args: { folder?: string; cursor?: string }) => {
+            const path = diskPath(args.folder ?? "/")
+            const offset = args.cursor === undefined ? 0 : Number(args.cursor)
+            if (!Number.isSafeInteger(offset) || offset < 0)
+              throw new CliError("validation_error", "--cursor takes the value page.next gave", { param: "--cursor" })
+            const chosen = new Set(tools.roots())
+            // The source `source` above built, typed by cli-core only as its documents part.
+            const page = await tools.withSource((source) => (source as Disk).page(path, offset))
+            tools.output(
+              listOf("folders browse", {
+                items: page.files.filter(isFolder).map((file) => ({
+                  id: file.id,
+                  name: file.name,
+                  path: file.providerMetadata.path,
+                  added: chosen.has(file.id),
+                })),
+                limit: PAGE,
+                has_more: page.more,
+                paging: "cursor",
+                ...(page.more ? { cursor: String(offset + PAGE) } : {}),
+                args: { folder: path },
+              }),
+            )
+          }),
+        { pin: ["folders add"] },
+      )
     },
     textLimit: 1_000_000,
     maxEntries: 10_000,

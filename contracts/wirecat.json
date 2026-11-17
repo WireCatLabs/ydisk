@@ -107,7 +107,7 @@
         "local": "read"
       },
       "permission": "folders.browse",
-      "entity": "document"
+      "entity": "disk_item"
     },
     {
       "path": [
@@ -627,7 +627,7 @@
         "local": "read"
       },
       "permission": "files.list",
-      "entity": "document"
+      "entity": "disk_item"
     },
     {
       "path": [
@@ -640,7 +640,7 @@
         "local": "read"
       },
       "permission": "files.show",
-      "entity": "document"
+      "entity": "disk_item"
     },
     {
       "path": [
@@ -653,7 +653,7 @@
         "local": "write"
       },
       "permission": "files.download",
-      "entity": "document"
+      "entity": "disk_item"
     },
     {
       "path": [

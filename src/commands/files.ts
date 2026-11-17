@@ -11,6 +11,7 @@ import {
   FETCH,
   itemOf,
   listOf,
+  nextUsually,
   outputFor,
   ownerOnlyOption,
   REMOTE_READ,
@@ -89,49 +90,56 @@ const read = withDisk
 
 const PATH = "Disk path, like /Documents/plan.pdf or disk:/Documents/plan.pdf"
 
+// A live Disk item is no synced document: the store's commands would answer not_found for it.
 const listCommand = () =>
-  annotate(new Command("list"), {
-    effects: REMOTE_READ,
-    offline: false,
-    output: { entity: "document", view: "disk" },
-    examples: [`${CLI} personal files list`, `${CLI} personal files list --folder /Documents --json`],
-  })
-    .description("list what a Disk folder holds, live, a page at a time")
-    .option("--folder <folder>", "the Disk folder to list, by its path; the top of the Disk without it")
-    .option("--cursor <cursor>", "go on from where the last page stopped; page.next gives it, with the same --folder")
-    .action(async function (this: Command, args: { folder?: string; cursor?: string }) {
-      const path = diskPath(args.folder ?? "/")
-      const offset = args.cursor === undefined ? 0 : Number(args.cursor)
-      if (!Number.isSafeInteger(offset) || offset < 0)
-        throw new CliError("validation_error", "--cursor takes the value page.next gave", { param: "--cursor" })
-      const page = await read(this, (disk) => disk.page(path, offset))
-      renderAnswer(
-        this,
-        outputFor(this),
-        listOf("files list", {
-          items: page.files.map(row),
-          limit: PAGE,
-          has_more: page.more,
-          paging: "cursor",
-          ...(page.more ? { cursor: String(offset + PAGE) } : {}),
-          args: { folder: path },
-        }),
-      )
+  nextUsually(
+    annotate(new Command("list"), {
+      effects: REMOTE_READ,
+      offline: false,
+      output: { entity: "disk_item" },
+      examples: [`${CLI} personal files list`, `${CLI} personal files list --folder /Documents --json`],
     })
+      .description("list what a Disk folder holds, live, a page at a time")
+      .option("--folder <folder>", "the Disk folder to list, by its path; the top of the Disk without it")
+      .option("--cursor <cursor>", "go on from where the last page stopped; page.next gives it, with the same --folder")
+      .action(async function (this: Command, args: { folder?: string; cursor?: string }) {
+        const path = diskPath(args.folder ?? "/")
+        const offset = args.cursor === undefined ? 0 : Number(args.cursor)
+        if (!Number.isSafeInteger(offset) || offset < 0)
+          throw new CliError("validation_error", "--cursor takes the value page.next gave", { param: "--cursor" })
+        const page = await read(this, (disk) => disk.page(path, offset))
+        renderAnswer(
+          this,
+          outputFor(this),
+          listOf("files list", {
+            items: page.files.map(row),
+            limit: PAGE,
+            has_more: page.more,
+            paging: "cursor",
+            ...(page.more ? { cursor: String(offset + PAGE) } : {}),
+            args: { folder: path },
+          }),
+        )
+      }),
+    { pin: ["files show", "files download"] },
+  )
 
 const showCommand = () =>
-  annotate(new Command("show"), {
-    effects: REMOTE_READ,
-    offline: false,
-    output: { entity: "document", view: "disk" },
-    examples: [`${CLI} personal files show /plan.pdf`],
-  })
-    .description("show one file or folder on the Disk, live")
-    .argument("<path>", PATH)
-    .action(async function (this: Command, path: string) {
-      const file = await read(this, (disk) => disk.byPath(diskPath(path)))
-      renderAnswer(this, outputFor(this), itemOf(row(file)))
+  nextUsually(
+    annotate(new Command("show"), {
+      effects: REMOTE_READ,
+      offline: false,
+      output: { entity: "disk_item" },
+      examples: [`${CLI} personal files show /plan.pdf`],
     })
+      .description("show one file or folder on the Disk, live")
+      .argument("<path>", PATH)
+      .action(async function (this: Command, path: string) {
+        const file = await read(this, (disk) => disk.byPath(diskPath(path)))
+        renderAnswer(this, outputFor(this), itemOf(row(file)))
+      }),
+    { pin: ["files download"] },
+  )
 
 /** The most text a download without --output answers with; the agent asks for a part of a longer file elsewhere. */
 const TEXT_LIMIT = 200_000
@@ -141,7 +149,7 @@ const downloadCommand = () =>
     annotate(new Command("download"), {
       effects: FETCH,
       offline: false,
-      output: { entity: "document", view: "disk_text" },
+      output: { entity: "disk_item", view: "text" },
       examples: [
         `${CLI} personal files download /notes.md --json`,
         `${CLI} personal files download /plan.pdf --output ./plan.pdf`,
