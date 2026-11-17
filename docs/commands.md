@@ -109,11 +109,11 @@ ydisk session list
 
 ## `ydisk api`
 
-the raw Example Comments API, one command per operation of its OpenAPI document
+the raw Yandex Disk API, one command per operation of its OpenAPI document
 
 ### `ydisk api list`
 
-list every Example Comments API operation this CLI offers, without calling Example Comments
+list every Yandex Disk API operation this CLI offers, without calling Yandex Disk
 
 ```sh
 ydisk api list [query]
@@ -127,7 +127,7 @@ ydisk api list [query]
 
 ### `ydisk api show`
 
-show one operation's parameters and request schema, without calling Example Comments
+show one operation's parameters and request schema, without calling Yandex Disk
 
 ```sh
 ydisk api show <operation>
@@ -137,88 +137,439 @@ ydisk api show <operation>
 |---|---|---|
 | `operation` | required | the operation, as api list prints it. |
 
-**Example:** `ydisk personal api show comments-list --json`
+**Example:** `ydisk personal api show disk-get --json`
 
-### `ydisk api comments-list`
+### `ydisk api disk-get`
 
-List comments, newest first — read (GET /comments)
+Получить метаинформацию о диске пользователя — read (GET /v1/disk)
 
 ```sh
-ydisk api comments-list [options]
+ydisk api disk-get [options]
 ```
 
 | Option | What it does |
 |---|---|
-| `--limit <value>` | limit. |
-| `--start-cursor <value>` | start_cursor. |
+| `--extra-fields <value>` | Дополнительные поля, которые нужно вернуть. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
+
+**Example:** `ydisk personal api disk-get`
+
+### `ydisk api resources-list`
+
+Получить метаинформацию о файле или каталоге — read (GET /v1/disk/resources)
+
+```sh
+ydisk api resources-list [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--path <value>` | Путь к ресурсу. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
+| `--limit <value>` | Количество выводимых вложенных ресурсов. |
+| `--offset <value>` | Смещение от начала списка вложенных ресурсов. |
+| `--preview-crop <value>` | Разрешить обрезку превью. |
+| `--preview-size <value>` | Размер превью. |
+| `--sort <value>` | Поле для сортировки вложенных ресурсов. |
 | `--all` | read every page, as the API pages it. |
 
-**Example:** `ydisk personal api comments-list`
+**Example:** `ydisk personal api resources-list --path <value>`
 
-### `ydisk api comments-create`
+### `ydisk api resources-create`
 
-Create a comment — write (POST /comments)
+Создать каталог — write (PUT /v1/disk/resources)
 
 **Changes something in the service.**
 
 ```sh
-ydisk api comments-create [options]
+ydisk api resources-create [options]
 ```
 
 | Option | What it does |
 |---|---|
+| `--path <value>` | Путь к создаваемой папке. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
+
+**Example:** `ydisk personal api resources-create --path <value>`
+
+### `ydisk api resources-update`
+
+Обновить пользовательские данные ресурса — write (PATCH /v1/disk/resources)
+
+**Changes something in the service.**
+
+```sh
+ydisk api resources-update [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--path <value>` | Путь к обновляемому ресурсу. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
 | `--body <json>` | the request body as JSON; - reads it from stdin. |
 | `--body-file <path>` | the request body from a JSON file; - is stdin. |
 
-**Example:** `ydisk personal api comments-create`
+**Example:** `ydisk personal api resources-update --path <value>`
 
-### `ydisk api comments-get`
+### `ydisk api resources-delete`
 
-Show one comment — read (GET /comments/{comment_id})
-
-```sh
-ydisk api comments-get [options]
-```
-
-| Option | What it does |
-|---|---|
-| `--comment-id <value>` | comment_id. |
-
-**Example:** `ydisk personal api comments-get --comment-id <value>`
-
-### `ydisk api comments-update`
-
-Change a comment's text — write (PATCH /comments/{comment_id})
+Удалить файл или папку — destructive (DELETE /v1/disk/resources)
 
 **Changes something in the service.**
 
 ```sh
-ydisk api comments-update [options]
+ydisk api resources-delete [options]
 ```
 
 | Option | What it does |
 |---|---|
-| `--comment-id <value>` | comment_id. |
+| `--path <value>` | Путь к файлу или папке. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
+| `--force-async <value>` | Выполнить асинхронно. |
+| `--md5 <value>` | md5 удаляемого файла. |
+| `--permanently <value>` | Удалить ресурс не помещая в Корзину. |
+
+**Example:** `ydisk personal api resources-delete --path <value>`
+
+### `ydisk api resources-copy`
+
+Создать копию файла или папки — write (POST /v1/disk/resources/copy)
+
+**Changes something in the service.**
+
+```sh
+ydisk api resources-copy [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--from <value>` | Путь к копируемому ресурсу. |
+| `--path <value>` | Путь к создаваемому ресурсу. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
+| `--force-async <value>` | Выполнить асинхронно. |
+| `--overwrite <value>` | Перезаписать существующий ресурс. |
+
+**Example:** `ydisk personal api resources-copy --from <value> --path <value>`
+
+### `ydisk api resources-download-link`
+
+Получить ссылку на скачивание файла — read (GET /v1/disk/resources/download)
+
+```sh
+ydisk api resources-download-link [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--path <value>` | Путь к ресурсу. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
+
+**Example:** `ydisk personal api resources-download-link --path <value>`
+
+### `ydisk api resources-files-list`
+
+Получить список файлов упорядоченный по имени — read (GET /v1/disk/resources/files)
+
+```sh
+ydisk api resources-files-list [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--fields <value>` | Список возвращаемых атрибутов. |
+| `--limit <value>` | Количество последних загруженных файлов в ответе. |
+| `--media-type <value>` | Фильтр по медиа типу. Несколько типов перечисляются через запятую. |
+| `--offset <value>` | Смещение от начала списка вложенных ресурсов. |
+| `--preview-crop <value>` | Разрешить обрезку превью. |
+| `--preview-size <value>` | Размер превью. |
+| `--sort <value>` | Поле для сортировки ресурсов. |
+| `--all` | read every page, as the API pages it. |
+
+**Example:** `ydisk personal api resources-files-list`
+
+### `ydisk api resources-last-uploaded-list`
+
+Получить список файлов упорядоченный по дате загрузки — read (GET /v1/disk/resources/last-uploaded)
+
+```sh
+ydisk api resources-last-uploaded-list [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--fields <value>` | Список возвращаемых атрибутов. |
+| `--limit <value>` | Количество последних загруженных файлов в ответе. |
+| `--media-type <value>` | Фильтр по медиа типу. Несколько типов перечисляются через запятую. |
+| `--preview-crop <value>` | Разрешить обрезку превью. |
+| `--preview-size <value>` | Размер превью. |
+
+**Example:** `ydisk personal api resources-last-uploaded-list`
+
+### `ydisk api resources-move`
+
+Переместить файл или папку — write (POST /v1/disk/resources/move)
+
+**Changes something in the service.**
+
+```sh
+ydisk api resources-move [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--from <value>` | Путь к перемещаемому ресурсу. |
+| `--path <value>` | Путь к создаваемому ресурсу. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
+| `--force-async <value>` | Выполнить асинхронно. |
+| `--overwrite <value>` | Перезаписать существующий ресурс. |
+
+**Example:** `ydisk personal api resources-move --from <value> --path <value>`
+
+### `ydisk api resources-public-list`
+
+Получить список опубликованных ресурсов — read (GET /v1/disk/resources/public)
+
+```sh
+ydisk api resources-public-list [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--fields <value>` | Список возвращаемых атрибутов. |
+| `--limit <value>` | Количество выводимых ресурсов. |
+| `--offset <value>` | Смещение от начала списка ресурсов. |
+| `--preview-crop <value>` | Разрешить обрезку превью. |
+| `--preview-size <value>` | Размер превью. |
+| `--type <value>` | Фильтр по типам ресурсов. |
+| `--all` | read every page, as the API pages it. |
+
+**Example:** `ydisk personal api resources-public-list`
+
+### `ydisk api resources-publish`
+
+Опубликовать ресурс — write (PUT /v1/disk/resources/publish)
+
+**Changes something in the service.**
+
+```sh
+ydisk api resources-publish [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--path <value>` | Путь к публикуемому ресурсу. |
+| `--allow-address-access <value>` | Возможность клиента обрабатывать ответы от адресного доступа. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
 | `--body <json>` | the request body as JSON; - reads it from stdin. |
 | `--body-file <path>` | the request body from a JSON file; - is stdin. |
 
-**Example:** `ydisk personal api comments-update --comment-id <value>`
+**Example:** `ydisk personal api resources-publish --path <value>`
 
-### `ydisk api comments-delete`
+### `ydisk api resources-unpublish`
 
-Delete a comment — destructive (DELETE /comments/{comment_id})
+Отменить публикацию ресурса — write (PUT /v1/disk/resources/unpublish)
 
 **Changes something in the service.**
 
 ```sh
-ydisk api comments-delete [options]
+ydisk api resources-unpublish [options]
 ```
 
 | Option | What it does |
 |---|---|
-| `--comment-id <value>` | comment_id. |
+| `--path <value>` | Путь к ресурсу. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
 
-**Example:** `ydisk personal api comments-delete --comment-id <value>`
+**Example:** `ydisk personal api resources-unpublish --path <value>`
+
+### `ydisk api resources-upload-link`
+
+Получить ссылку для загрузки файла — read (GET /v1/disk/resources/upload)
+
+```sh
+ydisk api resources-upload-link [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--path <value>` | Путь к загружаемому файлу на Диске. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
+| `--overwrite <value>` | Перезаписать существующий файл. |
+
+**Example:** `ydisk personal api resources-upload-link --path <value>`
+
+### `ydisk api resources-upload-url`
+
+Загрузить файл в Диск по URL — write (POST /v1/disk/resources/upload)
+
+**Changes something in the service.**
+
+```sh
+ydisk api resources-upload-url [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--path <value>` | Путь, куда будет помещён ресурс. |
+| `--url <value>` | URL внешнего ресурса, который следует загрузить. |
+| `--disable-redirects <value>` | Запретить делать редиректы. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
+
+**Example:** `ydisk personal api resources-upload-url --path <value> --url <value>`
+
+### `ydisk api public-resources-get`
+
+Получить метаинформацию о публичном файле или каталоге — read (GET /v1/disk/public/resources)
+
+```sh
+ydisk api public-resources-get [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--public-key <value>` | Ключ или публичный URL ресурса. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
+| `--limit <value>` | Количество выводимых вложенных ресурсов. |
+| `--offset <value>` | Смещение от начала списка вложенных ресурсов. |
+| `--path <value>` | Путь к ресурсу в публичной папке. |
+| `--preview-crop <value>` | Разрешить обрезку превью. |
+| `--preview-size <value>` | Размер превью. |
+| `--sort <value>` | Поле для сортировки вложенных ресурсов. |
+| `--all` | read every page, as the API pages it. |
+
+**Example:** `ydisk personal api public-resources-get --public-key <value>`
+
+### `ydisk api public-resources-download-link`
+
+Получить ссылку на скачивание публичного ресурса — read (GET /v1/disk/public/resources/download)
+
+```sh
+ydisk api public-resources-download-link [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--public-key <value>` | Ключ или публичный URL ресурса. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
+| `--path <value>` | Путь к ресурсу в публичной папке. |
+
+**Example:** `ydisk personal api public-resources-download-link --public-key <value>`
+
+### `ydisk api public-settings-update`
+
+Обновить настройки публичных ссылок — write (PATCH /v1/disk/public/resources/public-settings)
+
+**Changes something in the service.**
+
+```sh
+ydisk api public-settings-update [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--path <value>` | Путь к ресурсу. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
+| `--body <json>` | the request body as JSON; - reads it from stdin. |
+| `--body-file <path>` | the request body from a JSON file; - is stdin. |
+
+**Example:** `ydisk personal api public-settings-update --path <value>`
+
+### `ydisk api public-resources-save-to-disk`
+
+Сохранить публичный ресурс в папку Загрузки — write (POST /v1/disk/public/resources/save-to-disk)
+
+**Changes something in the service.**
+
+```sh
+ydisk api public-resources-save-to-disk [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--public-key <value>` | Ключ или публичный URL ресурса. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
+| `--force-async <value>` | Выполнить асинхронно. |
+| `--name <value>` | Имя, под которым ресурс будет сохранён в папке. |
+| `--path <value>` | Путь к копируемому ресурсу в публичной папке. |
+| `--save-path <value>` | Путь к папке, в которую будет сохранен ресурс. По умолчанию «Загрузки». |
+
+**Example:** `ydisk personal api public-resources-save-to-disk --public-key <value>`
+
+### `ydisk api trash-resources-list`
+
+Получить содержимое Корзины — read (GET /v1/disk/trash/resources)
+
+```sh
+ydisk api trash-resources-list [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--path <value>` | Путь к ресурсу в Корзине. |
+| `--apply-photoslice-filter <value>` | Требуется ли отдавать только фотосрез. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
+| `--limit <value>` | Количество выводимых вложенных ресурсов. |
+| `--offset <value>` | Смещение от начала списка вложенных ресурсов. |
+| `--preview-crop <value>` | Разрешить обрезку превью. |
+| `--preview-size <value>` | Размер превью. |
+| `--sort <value>` | Поле для сортировки вложенных ресурсов. |
+| `--all` | read every page, as the API pages it. |
+
+**Example:** `ydisk personal api trash-resources-list --path <value>`
+
+### `ydisk api trash-resources-delete`
+
+Очистить Корзину — destructive (DELETE /v1/disk/trash/resources)
+
+**Changes something in the service.**
+
+```sh
+ydisk api trash-resources-delete [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--apply-photoslice-filter <value>` | Требуется ли удалять только файлы фотосреза. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
+| `--force-async <value>` | Выполнить асинхронно. |
+| `--path <value>` | Путь к ресурсу в Корзине. |
+
+**Example:** `ydisk personal api trash-resources-delete`
+
+### `ydisk api trash-resources-restore`
+
+Восстановить ресурс из Корзины — write (PUT /v1/disk/trash/resources/restore)
+
+**Changes something in the service.**
+
+```sh
+ydisk api trash-resources-restore [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--path <value>` | Путь к ресурсу в Корзине. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
+| `--force-async <value>` | Выполнить асинхронно. |
+| `--name <value>` | Имя, под которым будет восстановлен ресурс. |
+| `--overwrite <value>` | Перезаписать существующий ресурс восстанавливаемым. |
+
+**Example:** `ydisk personal api trash-resources-restore --path <value>`
+
+### `ydisk api operations-get`
+
+Получить статус асинхронной операции — read (GET /v1/disk/operations/{operation_id})
+
+```sh
+ydisk api operations-get [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--operation-id <value>` | Идентификатор операции. |
+| `--fields <value>` | Список возвращаемых атрибутов. |
+
+**Example:** `ydisk personal api operations-get --operation-id <value>`
 
 ## `ydisk comments`
 
@@ -352,8 +703,12 @@ the instructions an agent is given for this tool
 print SKILL.md — `ydisk skill install` puts it where Claude Code, Codex, Gemini CLI and OpenClaw look for it, and where Hermes does on request; --for prints the copy already there
 
 ```sh
-ydisk skill show [options]
+ydisk skill show [name] [options]
 ```
+
+| Argument | | What it is |
+|---|---|---|
+| `name` | optional | a part of this skill, or a skill shipped for a task: api-comments, api. |
 
 | Option | What it does |
 |---|---|

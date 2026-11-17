@@ -20,8 +20,10 @@ export const IDENTITY: AppIdentity = {
 export const DESKTOP: ManifestIdentity = {
   ...IDENTITY,
   docs: "https://github.com/WireCatLabs/ydisk#readme",
-  // SAMPLE: every host the CLI contacts (WC-CMD-32); src/sample/transport.ts reaches only these.
-  hosts: ["comments.example.invalid"],
+  // Every host the CLI contacts (WC-CMD-32). The API is cloud-api.yandex.net; its download and upload links point at
+  // downloader.disk.yandex.ru and *.disk.yandex.net (https://yandex.ru/dev/disk-api/doc/en/reference/content, …/upload),
+  // names still to confirm by a live answer. SAMPLE: comments.example.invalid until the sample service goes.
+  hosts: ["cloud-api.yandex.net", "downloader.disk.yandex.ru", "*.disk.yandex.net", "comments.example.invalid"],
   tagline: "A new WireCat CLI, started from cli-template",
   signIn: {
     gives: "Lets your agent read and change your account through ydisk.",

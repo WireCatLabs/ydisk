@@ -1,11 +1,41 @@
 {
   "sources": [
     {
-      "name": "comments",
-      "url": "https://comments.example.invalid/swagger.json",
-      "file": "swagger.json",
-      "sha256": "56bd2648569f2f934ca1af37e32a507b2a89246d8cfd099c73e4a14caeaa8aa3"
+      "name": "listing",
+      "url": "https://cloud-api.yandex.net/v1/schema",
+      "file": "listing.json",
+      "sha256": "48d90c8e8e542dbf670cb0511ae299af170195ce6bde3c66f98aa6cc27188298"
+    },
+    {
+      "name": "disk",
+      "url": "https://cloud-api.yandex.net/v1/schema/resources/v1/disk",
+      "file": "disk.json",
+      "sha256": "ea54591ebf372b2fc6382376682ab35a92aa74c0b7263398d070511ad279cbe6"
+    },
+    {
+      "name": "resources",
+      "url": "https://cloud-api.yandex.net/v1/schema/resources/v1/disk/resources",
+      "file": "resources.json",
+      "sha256": "fcc1ef14c7b5dcf80d3d303698173876692047c85242a3eab1bbce7dbb6be728"
+    },
+    {
+      "name": "public-resources",
+      "url": "https://cloud-api.yandex.net/v1/schema/resources/v1/disk/public/resources",
+      "file": "public-resources.json",
+      "sha256": "d47219d47ba3bf64825875cfcd2cca175ca55c86763a7bbfcbb6894feea09af8"
+    },
+    {
+      "name": "trash-resources",
+      "url": "https://cloud-api.yandex.net/v1/schema/resources/v1/disk/trash/resources",
+      "file": "trash-resources.json",
+      "sha256": "c3d04f59d7dd08737a2098b0f4b15e04f9c338db83d8e8efd832bfad01c4e74b"
+    },
+    {
+      "name": "operations",
+      "url": "https://cloud-api.yandex.net/v1/schema/resources/v1/disk/operations/{operation_id}",
+      "file": "operations.json",
+      "sha256": "85844b91c7dc449cef4b13968b76d9772d8d7012571147d0fe3f35aac5a410e3"
     }
   ],
-  "retrieved_at": "2026-11-16T00:00:00.000Z"
+  "retrieved_at": "2026-11-17T02:07:57.569Z"
 }

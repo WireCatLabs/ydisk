@@ -76,7 +76,7 @@
         "api",
         "list"
       ],
-      "summary": "list every Example Comments API operation this CLI offers, without calling…",
+      "summary": "list every Yandex Disk API operation this CLI offers, without calling Yandex…",
       "effects": {
         "remote": "none",
         "local": "none"
@@ -89,7 +89,7 @@
         "api",
         "show"
       ],
-      "summary": "show one operation's parameters and request schema, without calling Example…",
+      "summary": "show one operation's parameters and request schema, without calling Yandex Disk",
       "effects": {
         "remote": "none",
         "local": "none"
@@ -99,62 +99,278 @@
     {
       "path": [
         "api",
-        "comments-list"
+        "disk-get"
       ],
-      "summary": "List comments, newest first — read (GET /comments)",
+      "summary": "Получить метаинформацию о диске пользователя — read (GET /v1/disk)",
       "effects": {
         "remote": "read",
         "local": "none"
       },
-      "permission": "api.comments-list"
+      "permission": "api.disk-get"
     },
     {
       "path": [
         "api",
-        "comments-create"
+        "resources-list"
       ],
-      "summary": "Create a comment — write (POST /comments)",
-      "effects": {
-        "remote": "write",
-        "local": "none"
-      },
-      "permission": "api.comments-create"
-    },
-    {
-      "path": [
-        "api",
-        "comments-get"
-      ],
-      "summary": "Show one comment — read (GET /comments/{comment_id})",
+      "summary": "Получить метаинформацию о файле или каталоге — read (GET /v1/disk/resources)",
       "effects": {
         "remote": "read",
         "local": "none"
       },
-      "permission": "api.comments-get"
+      "permission": "api.resources-list"
     },
     {
       "path": [
         "api",
-        "comments-update"
+        "resources-create"
       ],
-      "summary": "Change a comment's text — write (PATCH /comments/{comment_id})",
+      "summary": "Создать каталог — write (PUT /v1/disk/resources)",
       "effects": {
         "remote": "write",
         "local": "none"
       },
-      "permission": "api.comments-update"
+      "permission": "api.resources-create"
     },
     {
       "path": [
         "api",
-        "comments-delete"
+        "resources-update"
       ],
-      "summary": "Delete a comment — destructive (DELETE /comments/{comment_id})",
+      "summary": "Обновить пользовательские данные ресурса — write (PATCH /v1/disk/resources)",
       "effects": {
         "remote": "write",
         "local": "none"
       },
-      "permission": "api.comments-delete"
+      "permission": "api.resources-update"
+    },
+    {
+      "path": [
+        "api",
+        "resources-delete"
+      ],
+      "summary": "Удалить файл или папку — destructive (DELETE /v1/disk/resources)",
+      "effects": {
+        "remote": "write",
+        "local": "none"
+      },
+      "permission": "api.resources-delete"
+    },
+    {
+      "path": [
+        "api",
+        "resources-copy"
+      ],
+      "summary": "Создать копию файла или папки — write (POST /v1/disk/resources/copy)",
+      "effects": {
+        "remote": "write",
+        "local": "none"
+      },
+      "permission": "api.resources-copy"
+    },
+    {
+      "path": [
+        "api",
+        "resources-download-link"
+      ],
+      "summary": "Получить ссылку на скачивание файла — read (GET /v1/disk/resources/download)",
+      "effects": {
+        "remote": "read",
+        "local": "none"
+      },
+      "permission": "api.resources-download-link"
+    },
+    {
+      "path": [
+        "api",
+        "resources-files-list"
+      ],
+      "summary": "Получить список файлов упорядоченный по имени — read (GET…",
+      "effects": {
+        "remote": "read",
+        "local": "none"
+      },
+      "permission": "api.resources-files-list"
+    },
+    {
+      "path": [
+        "api",
+        "resources-last-uploaded-list"
+      ],
+      "summary": "Получить список файлов упорядоченный по дате загрузки — read (GET…",
+      "effects": {
+        "remote": "read",
+        "local": "none"
+      },
+      "permission": "api.resources-last-uploaded-list"
+    },
+    {
+      "path": [
+        "api",
+        "resources-move"
+      ],
+      "summary": "Переместить файл или папку — write (POST /v1/disk/resources/move)",
+      "effects": {
+        "remote": "write",
+        "local": "none"
+      },
+      "permission": "api.resources-move"
+    },
+    {
+      "path": [
+        "api",
+        "resources-public-list"
+      ],
+      "summary": "Получить список опубликованных ресурсов — read (GET /v1/disk/resources/public)",
+      "effects": {
+        "remote": "read",
+        "local": "none"
+      },
+      "permission": "api.resources-public-list"
+    },
+    {
+      "path": [
+        "api",
+        "resources-publish"
+      ],
+      "summary": "Опубликовать ресурс — write (PUT /v1/disk/resources/publish)",
+      "effects": {
+        "remote": "write",
+        "local": "none"
+      },
+      "permission": "api.resources-publish"
+    },
+    {
+      "path": [
+        "api",
+        "resources-unpublish"
+      ],
+      "summary": "Отменить публикацию ресурса — write (PUT /v1/disk/resources/unpublish)",
+      "effects": {
+        "remote": "write",
+        "local": "none"
+      },
+      "permission": "api.resources-unpublish"
+    },
+    {
+      "path": [
+        "api",
+        "resources-upload-link"
+      ],
+      "summary": "Получить ссылку для загрузки файла — read (GET /v1/disk/resources/upload)",
+      "effects": {
+        "remote": "read",
+        "local": "none"
+      },
+      "permission": "api.resources-upload-link"
+    },
+    {
+      "path": [
+        "api",
+        "resources-upload-url"
+      ],
+      "summary": "Загрузить файл в Диск по URL — write (POST /v1/disk/resources/upload)",
+      "effects": {
+        "remote": "write",
+        "local": "none"
+      },
+      "permission": "api.resources-upload-url"
+    },
+    {
+      "path": [
+        "api",
+        "public-resources-get"
+      ],
+      "summary": "Получить метаинформацию о публичном файле или каталоге — read (GET…",
+      "effects": {
+        "remote": "read",
+        "local": "none"
+      },
+      "permission": "api.public-resources-get"
+    },
+    {
+      "path": [
+        "api",
+        "public-resources-download-link"
+      ],
+      "summary": "Получить ссылку на скачивание публичного ресурса — read (GET…",
+      "effects": {
+        "remote": "read",
+        "local": "none"
+      },
+      "permission": "api.public-resources-download-link"
+    },
+    {
+      "path": [
+        "api",
+        "public-settings-update"
+      ],
+      "summary": "Обновить настройки публичных ссылок — write (PATCH…",
+      "effects": {
+        "remote": "write",
+        "local": "none"
+      },
+      "permission": "api.public-settings-update"
+    },
+    {
+      "path": [
+        "api",
+        "public-resources-save-to-disk"
+      ],
+      "summary": "Сохранить публичный ресурс в папку Загрузки — write (POST…",
+      "effects": {
+        "remote": "write",
+        "local": "none"
+      },
+      "permission": "api.public-resources-save-to-disk"
+    },
+    {
+      "path": [
+        "api",
+        "trash-resources-list"
+      ],
+      "summary": "Получить содержимое Корзины — read (GET /v1/disk/trash/resources)",
+      "effects": {
+        "remote": "read",
+        "local": "none"
+      },
+      "permission": "api.trash-resources-list"
+    },
+    {
+      "path": [
+        "api",
+        "trash-resources-delete"
+      ],
+      "summary": "Очистить Корзину — destructive (DELETE /v1/disk/trash/resources)",
+      "effects": {
+        "remote": "write",
+        "local": "none"
+      },
+      "permission": "api.trash-resources-delete"
+    },
+    {
+      "path": [
+        "api",
+        "trash-resources-restore"
+      ],
+      "summary": "Восстановить ресурс из Корзины — write (PUT /v1/disk/trash/resources/restore)",
+      "effects": {
+        "remote": "write",
+        "local": "none"
+      },
+      "permission": "api.trash-resources-restore"
+    },
+    {
+      "path": [
+        "api",
+        "operations-get"
+      ],
+      "summary": "Получить статус асинхронной операции — read (GET…",
+      "effects": {
+        "remote": "read",
+        "local": "none"
+      },
+      "permission": "api.operations-get"
     },
     {
       "path": [
@@ -512,6 +728,9 @@
   },
   "network": {
     "hosts": [
+      "cloud-api.yandex.net",
+      "downloader.disk.yandex.ru",
+      "*.disk.yandex.net",
       "comments.example.invalid",
       "registry.npmjs.org",
       "huggingface.co",
