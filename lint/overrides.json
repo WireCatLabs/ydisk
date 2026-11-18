@@ -61,5 +61,12 @@
     "reason": "The events of one file of one mirror, already named by its arguments; nothing more to filter by.",
     "owner": "@WireCatLabs",
     "review_after": "2026-12-22"
+  },
+  {
+    "rule": "option-role",
+    "target": "mirrors preview --keep",
+    "reason": "The same choice as mirrors sync --keep, so the preview shows what that sync would do.",
+    "owner": "@WireCatLabs",
+    "review_after": "2026-12-22"
   }
 ]

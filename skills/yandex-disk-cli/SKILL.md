@@ -41,7 +41,7 @@ which answers its text. `folders add <path>` changes what the owner's sync copie
 ## Mirrored folders
 
 The owner may mirror a local folder with a Disk folder. `mirrors list` shows the pairs, `mirrors status` what the next
-sync would send, and `mirrors sync <id> --dry-run --json` the plan without changing anything. `mirrors sync <id>`
+sync would send, and `mirrors preview <id> --json` the plan without changing anything. `mirrors sync <id>`
 copies changes both ways; a file changed on both sides comes back under `conflicts` and stays as it is: ask the owner
 which side to keep, then run `mirrors sync <id> --keep local|disk|both`. Adding or removing a mirror is the owner's.
 

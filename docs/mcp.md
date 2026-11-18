@@ -95,7 +95,8 @@ agent:
   makes a permission stricter for that server, never looser:
   `ydisk personal mcp add claude-code --allow-writes --permission files.delete=deny`.
 
-An agent may sync the [mirrors](mirrors.md) you added (`mirrors list`, `mirrors status`, `mirrors sync`). It cannot
+An agent may sync the [mirrors](mirrors.md) you added (`mirrors list`, `mirrors status`, `mirrors preview`,
+`mirrors sync`). It cannot
 add or remove one, run `mirrors watch`, or pass `--allow-deletions` or `--repin`. A sync that replaces or deletes a
 file checks `files.delete`, so `deny` there keeps an agent's syncs to new files only.
 

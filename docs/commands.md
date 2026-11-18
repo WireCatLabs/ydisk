@@ -1222,9 +1222,27 @@ ydisk mirrors status [id]
 
 **Example:** `ydisk personal mirrors status --json`
 
+### `ydisk mirrors preview`
+
+list the Disk and show what mirrors sync would do: each upload, download, rename, trash and conflict; nothing is changed on either side
+
+```sh
+ydisk mirrors preview [id] [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `id` | optional | mirror id from mirrors list; every mirror of the profile when omitted. |
+
+| Option | What it does |
+|---|---|
+| `--keep <side>` | settle each conflict: keep the local file, the Disk's, or both. One of: `local`, `disk`, `both`. |
+
+**Example:** `ydisk personal mirrors preview --json`, `ydisk personal mirrors preview 1a2b3c4d --keep disk`
+
 ### `ydisk mirrors sync`
 
-sync mirrors both ways once: a change on one side is copied to the other, a deletion goes to the other side's trash, and a file changed on both sides is reported and left for --keep
+sync mirrors both ways once: a change on one side is copied to the other, a deletion goes to the other side's trash, and a file changed on both sides is reported and left for --keep; mirrors preview shows the plan first
 
 **Changes something in the service.**
 
@@ -1239,11 +1257,10 @@ ydisk mirrors sync [id] [options]
 | Option | What it does |
 |---|---|
 | `--keep <side>` | settle each conflict: keep the local file, the Disk's, or both. One of: `local`, `disk`, `both`. |
-| `--dry-run` | list the Disk and show what the sync would do, and change nothing. |
 | `--allow-deletions <count>` | let this run delete up to this many files when the guard stops it. |
 | `--repin` | the Disk or local folder was replaced and the new one is right: record it and sync. |
 
-**Example:** `ydisk personal mirrors sync`, `ydisk personal mirrors sync 1a2b3c4d --dry-run --json`, `ydisk personal mirrors sync 1a2b3c4d --keep disk`
+**Example:** `ydisk personal mirrors sync`, `ydisk personal mirrors sync 1a2b3c4d --keep disk`
 
 ### `ydisk mirrors watch`
 

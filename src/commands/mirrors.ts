@@ -13,6 +13,7 @@ import {
   outputFor,
   ownerOnlyOption,
   parseDuration,
+  REMOTE_READ,
   REMOTE_WRITE,
   renderAnswer,
   snakeKeys,
@@ -32,10 +33,10 @@ import {
   watchMirrors,
 } from "@wirecat/cli-core/documents"
 import { acquireLock, writeFileAtomic } from "@wirecat/cli-core/files"
-import { type Asker, guardedWrite, type KeyedGuard, levelFor, newOperationId } from "@wirecat/cli-core/sends"
+import { type Asker, guardedWrite, type KeyedGuard, newOperationId } from "@wirecat/cli-core/sends"
 import { Command, Option } from "commander"
 import * as v from "valibot"
-import { DELETE_KEY, permissions, UPLOAD_KEY } from "../config.js"
+import { DELETE_KEY, UPLOAD_KEY } from "../config.js"
 import { contextOf, type Disk, diskFor, tokenOf, withDisk, writeGuard } from "../context.js"
 import { IDENTITY, SERVICE } from "../identity.js"
 import { diskPath } from "../yandex/source.js"
@@ -224,8 +225,17 @@ const addCommand = () =>
       if (added) {
         list.push({ id, ...mirror })
         // The Disk folder is pinned now, so a folder put in its place before the first sync is refused, not mirrored.
-        const state = home.stateOf({ id, ...mirror })
-        state.save({ ...state.read(), rootId: found.remote.id })
+        // A fresh state, whatever a removal cut short left behind: an old one would read every file missing since as
+        // deleted.
+        home.stateOf({ id, ...mirror }).save({
+          version: 1,
+          principal: mirror.account,
+          root: mirror.path,
+          target: mirror.folder,
+          rootId: found.remote.id,
+          entries: {},
+          pending: {},
+        })
         await home.save(list)
       }
       output(this, itemOf({ id, path: root, folder: mirror.folder, added }))
@@ -265,10 +275,9 @@ const removeCommand = () =>
       const mirror = home.find(id)
       const held = await home.lock()
       try {
-        await home.save(home.mirrors().filter((one) => one.id !== id))
-        // Added again later, the pair starts as a first sync, which deletes nothing: an old state would read every
-        // file changed since as deleted.
+        // The state goes first: added again later, the pair starts as a first sync, which deletes nothing.
         rmSync(home.statePath(mirror), { force: true })
+        await home.save(home.mirrors().filter((one) => one.id !== id))
       } finally {
         await held.release()
       }
@@ -311,24 +320,50 @@ const keepOption = () =>
     "both",
   ])
 
+const keepOf = (side?: "local" | "disk" | "both"): Keep | undefined => (side === REMOTE ? "remote" : side)
+
+const previewCommand = () =>
+  annotate(new Command("preview"), {
+    effects: REMOTE_READ,
+    offline: false,
+    examples: [`${CLI} personal mirrors preview --json`, `${CLI} personal mirrors preview 1a2b3c4d --keep ${REMOTE}`],
+  })
+    .summary("list the Disk and show what mirrors sync would do")
+    .description(
+      "list the Disk and show what mirrors sync would do: each upload, download, rename, trash and conflict; " +
+        "nothing is changed on either side",
+    )
+    .argument("[id]", `${ID}; every mirror of the profile when omitted`)
+    .addOption(keepOption())
+    .action(async function (this: Command, id: string | undefined, args: { keep?: "local" | "disk" | "both" }) {
+      const chosen = mirrorsHome(this).chosen(id)
+      const keep = keepOf(args.keep)
+      const { items } = await withDisk(this, (disk) =>
+        syncFileMirrors({ ...engineOf(this, disk, chosen), mirrors: chosen, dryRun: true, ...(keep ? { keep } : {}) }),
+      )
+      output(
+        this,
+        allOf(
+          "mirrors preview",
+          items.map((item) => snakeKeys(item)),
+        ),
+      )
+    })
+
 const syncCommand = () =>
   annotate(new Command("sync"), {
     effects: REMOTE_WRITE,
     offline: false,
-    examples: [
-      `${CLI} personal mirrors sync`,
-      `${CLI} personal mirrors sync 1a2b3c4d --dry-run --json`,
-      `${CLI} personal mirrors sync 1a2b3c4d --keep ${REMOTE}`,
-    ],
+    examples: [`${CLI} personal mirrors sync`, `${CLI} personal mirrors sync 1a2b3c4d --keep ${REMOTE}`],
   })
     .summary("sync mirrors both ways once")
     .description(
       "sync mirrors both ways once: a change on one side is copied to the other, a deletion goes to the other " +
-        "side's trash, and a file changed on both sides is reported and left for --keep",
+        "side's trash, and a file changed on both sides is reported and left for --keep; mirrors preview shows " +
+        "the plan first",
     )
     .argument("[id]", `${ID}; every mirror of the profile when omitted`)
     .addOption(keepOption())
-    .option("--dry-run", "list the Disk and show what the sync would do, and change nothing")
     .addOption(
       ownerOnlyOption("--allow-deletions <count>", "let this run delete up to this many files when the guard stops it"),
     )
@@ -338,7 +373,7 @@ const syncCommand = () =>
     .action(async function (
       this: Command,
       id: string | undefined,
-      args: { keep?: "local" | "disk" | "both"; dryRun?: boolean; allowDeletions?: string; repin?: boolean },
+      args: { keep?: "local" | "disk" | "both"; allowDeletions?: string; repin?: boolean },
     ) {
       const home = mirrorsHome(this)
       const chosen = home.chosen(id)
@@ -347,33 +382,17 @@ const syncCommand = () =>
         throw new CliError("validation_error", "--allow-deletions takes the number of files the run may delete", {
           param: "--allow-deletions",
         })
-      const keep: Keep | undefined = args.keep === REMOTE ? "remote" : args.keep
+      const keep = keepOf(args.keep)
       const token = tokenOf(this)
       const { items, issues } = await contextOf(this).run((events) =>
         syncFileMirrors({
           ...engineOf(this, diskFor(this, events, token), chosen),
           mirrors: chosen,
           ...(keep ? { keep } : {}),
-          ...(args.dryRun ? { dryRun: true } : {}),
           ...(allowDeletions ? { allowDeletions } : {}),
           ...(args.repin ? { repin: true } : {}),
         }),
       )
-      if (args.dryRun) {
-        const { settings } = contextOf(this)
-        // The keys the real run checks, with this profile's level for each (WC-PERM-22).
-        const checks = ["mirrors.sync", UPLOAD_KEY, DELETE_KEY].map((key) => ({
-          key,
-          level: levelFor(settings.permissions, key, permissions.defaults).level,
-        }))
-        return output(
-          this,
-          allOf(
-            "mirrors sync",
-            items.map((item) => ({ ...(snakeKeys(item) as object), permissions: checks })),
-          ),
-        )
-      }
       const body = allOf(
         "mirrors sync",
         items.map((item) => snakeKeys(item)),
@@ -551,6 +570,7 @@ export const mirrorsCommand = (): Command =>
     .addCommand(addCommand())
     .addCommand(listCommand())
     .addCommand(statusCommand())
+    .addCommand(previewCommand())
     .addCommand(syncCommand())
     .addCommand(watchCommand())
     .addCommand(removeCommand())

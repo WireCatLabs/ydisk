@@ -15,6 +15,7 @@
   "files unpublish": "write",
   "mirrors list": "read",
   "mirrors status": "read",
+  "mirrors preview": "read",
   "mirrors sync": "write",
   "store info": "read",
   "api disk-get": "read",

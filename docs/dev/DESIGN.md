@@ -76,7 +76,9 @@ the commands. Settled on 2026-11-18 by live probes, asserted by `scripts/live.sh
 - **Permissions:** every write runs under `mirrors.sync` or `mirrors.watch`; a file put on the Disk also checks
   `files.upload`, a replace or trash on either side `files.delete`. Each set of keys has its own guard, so a deny on
   `files.delete` still lets new files through, and a key allowed once is not asked again in the run.
-- **MCP:** `list`, `status` and `sync`. `add`, `remove` and `versions` are `mcp: false`; `watch` is persistent;
+- **Preview:** `mirrors preview` runs the engine with `dryRun` and answers the plan. `sync` declares no `--dry-run`
+  of its own: cli-core's preview names the permission keys, and the deny contract reads them from it (WC-PERM-22).
+- **MCP:** `list`, `status`, `preview` and `sync`. `add`, `remove` and `versions` are `mcp: false`; `watch` is persistent;
   `--allow-deletions` and `--repin` are owner-only options.
 
 ## What is hand-written

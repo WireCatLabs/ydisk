@@ -167,7 +167,7 @@ ydisk personal files unpublish /Documents/plan.pdf
 
 ```sh
 ydisk personal mirrors add /Notes ~/notes
-ydisk personal mirrors sync --dry-run                 # what it would copy, and nothing else
+ydisk personal mirrors preview                        # what a sync would copy, and nothing else
 ydisk personal mirrors sync                           # both ways; a file changed on both sides is reported
 ydisk personal mirrors watch                          # keep syncing until Ctrl-C
 ```

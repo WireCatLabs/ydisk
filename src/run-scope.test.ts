@@ -47,7 +47,9 @@ describe("each remote command runs inside cli-core's run", () => {
       ),
       "mcp serve": "listens until stopped",
       "mirrors sync":
-        "needs a mirror saved first; src/mirrors.test.ts runs it against the fake inside the command's run",
+        "needs a saved mirror and a Disk that lists sha256, which the spec's fake lacks; it runs in contextOf().run, and src/mirrors.test.ts runs it against fake-disk",
+      "mirrors preview":
+        "the same listing as mirrors sync, writing nothing; src/mirrors.test.ts runs it against fake-disk",
       "mirrors watch": "keeps running until stopped; src/mirrors.test.ts runs one cycle and its --timeout",
       "memories extract": "asks the configured model, not Yandex Disk; cli-core's shared command",
       doctor:

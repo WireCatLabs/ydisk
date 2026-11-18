@@ -94,6 +94,8 @@ it("a first sync adopts identical files, copies one-sided ones both ways, and re
   expect(read(root, "both.txt")).toBe("local version")
   expect(text(disk, "both.txt")).toBe("disk version")
 
+  const preview = await cli(["preview", id, "--keep", "disk"])
+  expect((preview.json().items as Synced[])[0]?.plan).toEqual([{ kind: "download", path: "both.txt" }])
   const kept = await synced(cli, id, "--keep", "disk")
   expect(kept.code, kept.err).toBe(0)
   expect(read(root, "both.txt")).toBe("disk version")
@@ -228,23 +230,22 @@ it("a Disk folder replaced by another is refused until --repin, which then delet
   expect(text(disk, "b.txt")).toBe("b")
 })
 
-it("--dry-run lists the Disk, shows the plan and the keys the run checks, and writes nothing", async () => {
+it("preview lists the Disk and shows the plan; sync --dry-run shows the keys; neither writes", async () => {
   const { cli, root, disk } = setup({ "there.txt": "t" }, { "here.txt": "h" })
   const id = await added(cli, root)
   const before = disk.revision()
-  const ran = await synced(cli, id, "--dry-run")
-  expect(ran.code, ran.err).toBe(0)
-  expect(ran.result).toMatchObject({
-    plan: [
-      { kind: "upload", path: "here.txt" },
-      { kind: "download", path: "there.txt" },
-    ],
-    permissions: [
-      { key: "mirrors.sync", level: expect.any(String) },
-      { key: "files.upload", level: expect.any(String) },
-      { key: "files.delete", level: expect.any(String) },
-    ],
-  })
+  const preview = await cli(["preview", id])
+  expect(preview.code, preview.err).toBe(0)
+  expect((preview.json().items as Synced[])[0]?.plan).toEqual([
+    { kind: "upload", path: "here.txt" },
+    { kind: "download", path: "there.txt" },
+  ])
+  const calls = disk.calls.length
+  const dry = await cli(["sync", id, "--dry-run"])
+  expect(dry.code, dry.err).toBe(0)
+  expect(dry.json().item).toMatchObject({ permission: { key: "mirrors.sync" } })
+  expect(JSON.stringify(dry.json())).toContain("files.delete")
+  expect(disk.calls.length).toBe(calls)
   expect(disk.revision()).toBe(before)
   expect(existsSync(join(root, "there.txt"))).toBe(false)
   expect(disk.calls.filter((call) => call.method !== "GET")).toEqual([])
@@ -303,14 +304,14 @@ it("a sync asks once for each key at ask, however many files it replaces or dele
   expect(disk.trash.has("disk:/Notes/gone.txt")).toBe(true)
 })
 
-it("the read-only switch refuses a sync before any write, and --dry-run still runs", async () => {
+it("the read-only switch refuses a sync before any write, and preview still runs", async () => {
   const { cli, root, disk } = setup({}, { "here.txt": "h" })
   const id = await added(cli, root)
   const locked = { env: { YDISK_READ_ONLY: "1" } }
   const refused = await cli(["sync", id, "--yes"], locked)
   expect(refused.code).not.toBe(0)
   expect(disk.calls.filter((call) => call.method !== "GET")).toEqual([])
-  const preview = await cli(["sync", id, "--dry-run"], locked)
+  const preview = await cli(["preview", id], locked)
   expect(preview.code, preview.err).toBe(0)
 })
 

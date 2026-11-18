@@ -2,8 +2,8 @@
 
 A mirror keeps a folder on your computer and a folder on Yandex Disk the same, both ways. Edit a file in your editor,
 and the next sync puts it on the Disk. Change it on the Disk, on your phone or in the browser, and the sync brings it
-down. Nothing is ever overwritten or deleted without a way back: a deleted file goes to a trash, and the version a
-sync replaces on your computer is kept.
+down. A deleted file goes to a trash, never away, and the version a sync replaces on your computer is kept. What a
+sync replaces on the Disk is not kept by `ydisk`, so a file changed on both sides is never overwritten without you.
 
 Use a mirror when you work on files with local tools, such as an editor, a script or an agent, and want them on the
 Disk too, without installing the Yandex Disk app. The files stay as they are: a PDF stays a PDF, a note stays a
@@ -40,12 +40,12 @@ is refused.
 ## The first sync
 
 ```sh
-ydisk personal mirrors sync --dry-run
+ydisk personal mirrors preview
 ydisk personal mirrors sync
 ```
 
-`--dry-run` lists the Disk folder and shows what the sync would do, and changes nothing. It also shows the
-permissions the real run checks.
+`mirrors preview` lists the Disk folder and shows what the sync would do, and changes nothing. `mirrors sync
+--dry-run` shows the permissions the sync checks, without asking the Disk.
 
 On the first sync:
 
@@ -73,7 +73,7 @@ Settle the conflicts with another run:
 
 | Command | What happens |
 | --- | --- |
-| `mirrors sync --keep local` | Your copy replaces the Disk's. |
+| `mirrors sync --keep local` | Your copy replaces the Disk's. The Disk's version is not kept: use `--keep both` when unsure. |
 | `mirrors sync --keep disk` | The Disk's copy replaces yours. Yours is kept as an [earlier version](#earlier-versions-of-a-file). |
 | `mirrors sync --keep both` | The Disk's copy comes down beside yours as `name (conflict 2026-11-19 disk).ext`, and both go to the Disk. |
 
@@ -95,7 +95,7 @@ A file that is only missing, for any other reason, is reported under `unknown`, 
 missing Disk folder stops the whole mirror with an error, and nothing is deleted.
 
 A sync that would delete more than 2 files stops before it changes anything when the count is over 50, or over a
-quarter of the mirror's files. Check the list with `--dry-run`, then allow the number:
+quarter of the mirror's files. Check the list with `mirrors preview`, then allow the number:
 
 ```sh
 ydisk personal mirrors sync 1a2b3c4d --allow-deletions 60
@@ -128,8 +128,8 @@ ydisk personal mirrors versions restore 1a2b3c4d notes/plan.md <sha256>
 (`new`). `available` says whether that content is still kept. `versions restore` puts a kept version back into the
 local folder; the file there now is kept first. The next sync sends the restored file to the Disk.
 
-A version stays for 30 days. The last version of a file that was deleted stays for good. What a sync replaced on the
-Disk is not kept here; the Disk's own trash and history are the place to look for it.
+A version stays for 30 days. The last version of a file that was deleted stays for good. Only versions from your
+computer are kept: when a sync replaces a file on the Disk, `ydisk` keeps no copy of the Disk's old content.
 
 ## A folder that was replaced
 
@@ -166,12 +166,12 @@ Each sync write checks the command's own permission, `mirrors.sync` or `mirrors.
   once per run.
 
 With `files.delete` set to `deny`, a sync still sends and brings down new files, and lists each replace or deletion
-it skipped under `errors`. `YDISK_READ_ONLY=1` refuses a sync; `--dry-run` and `mirrors status` still work.
+it skipped under `errors`. `YDISK_READ_ONLY=1` refuses a sync; `mirrors preview` and `mirrors status` still work.
 
-Over MCP an agent may run `mirrors list`, `mirrors status` and `mirrors sync`, but not `--allow-deletions` or
-`--repin`. Over MCP nobody can answer a question, so a level at `ask` lets the write through: set `files.delete` to
-`deny` for an agent that should not replace or delete files. Adding or removing a mirror, `versions` and `watch` are
-for you only. See [connect your agent](mcp.md#decide-what-the-agent-may-change).
+Over MCP an agent may run `mirrors list`, `mirrors status`, `mirrors preview` and `mirrors sync`, but not
+`--allow-deletions` or `--repin`. Over MCP nobody can answer a question, so a level at `ask` lets the write through:
+set `files.delete` to `deny` for an agent that should not replace or delete files. Adding or removing a mirror,
+`versions` and `watch` are for you only. See [connect your agent](mcp.md#decide-what-the-agent-may-change).
 
 ## What is not synced
 

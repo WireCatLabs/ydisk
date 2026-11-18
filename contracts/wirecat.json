@@ -803,6 +803,18 @@
     {
       "path": [
         "mirrors",
+        "preview"
+      ],
+      "summary": "list the Disk and show what mirrors sync would do",
+      "effects": {
+        "remote": "read",
+        "local": "read"
+      },
+      "permission": "mirrors.preview"
+    },
+    {
+      "path": [
+        "mirrors",
         "sync"
       ],
       "summary": "sync mirrors both ways once",
