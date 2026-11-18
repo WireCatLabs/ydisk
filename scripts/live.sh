@@ -72,6 +72,30 @@ node -e '
   if (read(process.argv[1]) !== read(process.argv[2])) throw new Error("a moved file got a new resource_id")' \
   "$work/before.json" "$work/after.json"
 "${cli[@]}" live files delete "/ydisk-live/moved-$stamp.txt" --yes --json >/dev/null
+# Facts a two-way sync builds on that Yandex's docs leave open: the Disk's sha256, whether a replacing upload keeps
+# the file's resource_id, whether the Disk revision moves with a write, and what a delete with a wrong md5 answers.
+raw() { "${cli[@]}" live api "$@" 2>&1 || true; }
+echo "probe one $stamp" >"$work/probe.txt"
+"${cli[@]}" live files upload "$work/probe.txt" --folder /ydisk-live --name "probe-$stamp.txt" --json >/dev/null
+raw resources-list --path "disk:/ydisk-live/probe-$stamp.txt" >"$work/probe-1.json"
+raw disk-get --fields revision >"$work/rev-1.json"
+echo "probe two, longer $stamp" >"$work/probe.txt"
+"${cli[@]}" live files upload "$work/probe.txt" --folder /ydisk-live --name "probe-$stamp.txt" --replace --yes --json >/dev/null
+raw resources-list --path "disk:/ydisk-live/probe-$stamp.txt" >"$work/probe-2.json"
+raw disk-get --fields revision >"$work/rev-2.json"
+raw resources-delete --path "disk:/ydisk-live/probe-$stamp.txt" --md5 00000000000000000000000000000000 >"$work/del-wrong.json"
+raw resources-list --path "disk:/ydisk-live/probe-$stamp.txt" --fields path >"$work/after-wrong.json"
+node -e '
+  const fs = require("fs")
+  const read = (f) => { const t = fs.readFileSync(f, "utf8"); try { return JSON.parse(t) } catch { return t.trim() } }
+  const [one, two, r1, r2, del, after] = process.argv.slice(1, 7).map(read)
+  const local = require("crypto").createHash("sha256").update(fs.readFileSync(process.argv[7])).digest("hex")
+  const pick = (r) => ({ resource_id: r.resource_id, sha256: r.sha256, md5: r.md5, revision: r.revision })
+  console.error("probe:", JSON.stringify({ one: pick(one), two: pick(two), local_sha256: local,
+    disk_revision: [r1.revision, r2.revision], delete_wrong_md5: del, after_wrong: after }))' \
+  "$work/probe-1.json" "$work/probe-2.json" "$work/rev-1.json" "$work/rev-2.json" "$work/del-wrong.json" \
+  "$work/after-wrong.json" "$work/probe.txt"
+"${cli[@]}" live files delete "/ydisk-live/probe-$stamp.txt" --yes --json >/dev/null 2>&1 || true
 "${cli[@]}" live doctor --json >/dev/null
 
 "${cli[@]}" live session end --json >/dev/null
