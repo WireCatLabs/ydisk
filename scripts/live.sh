@@ -49,6 +49,12 @@ if [ "$status" -ne 0 ]; then
 fi
 "${cli[@]}" live files download /ydisk-live/live-check.txt --output "$work/live-check.txt" --json >/dev/null
 grep -q wirecatlive "$work/live-check.txt"
+"${cli[@]}" live folders browse --json >"$work/browse.json"
+node -e '
+  const items = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).items
+  const live = items.find((item) => item.path === "disk:/ydisk-live" || item.name === "ydisk-live")
+  if (!live) throw new Error("folders browse does not list /ydisk-live")
+  if (live.kind !== "folder" || ![true, false, null].includes(live.has_children)) throw new Error("folders browse item lacks kind or has_children")' "$work/browse.json"
 "${cli[@]}" live folders add /ydisk-live --json >/dev/null
 "${cli[@]}" live sync --json >/dev/null
 "${cli[@]}" live search wirecatlive --json >"$work/found.json"
@@ -69,4 +75,4 @@ node -e '
 "${cli[@]}" live doctor --json >/dev/null
 
 "${cli[@]}" live session end --json >/dev/null
-echo "live check passed: describe format 2, sign-in, files list, download, upload, move and delete, sync, search, doctor, sign-out"
+echo "live check passed: describe format 2, sign-in, files list, folders browse, download, upload, move and delete, sync, search, doctor, sign-out"
