@@ -7,7 +7,7 @@ ran it · ⛔ not tested offline, with the reason and where it is checked instea
 Measured from the test run (`coverage/argv.jsonl`), not searched for — see
 [TESTING.md](TESTING.md) for how, and for the states and failures that cut across commands.
 
-**163 ✅ · 169 ⛔ · 0 ❌** — 118 commands, 214 options.
+**164 ✅ · 168 ⛔ · 0 ❌** — 118 commands, 214 options.
 
 | Command | Option | | Note |
 |---|---|---|---|
@@ -24,7 +24,7 @@ Measured from the test run (`coverage/argv.jsonl`), not searched for — see
 | `account remove` | `--delete-data` | ✅ |  |
 | `account remove` | `--dry-run` | ✅ |  |
 | `folders add` |  | ✅ |  |
-| `folders list` |  | ⛔ | cli-core's shared documents command, mounted by documentLibraryCommands; cli-core's documents tests and documentCommandsContract drive it, and src/library.test.ts runs the contract over this CLI |
+| `folders list` |  | ✅ |  |
 | `folders browse` |  | ✅ |  |
 | `folders browse` | `--folder` | ✅ |  |
 | `folders browse` | `--cursor` | ✅ |  |

@@ -11,4 +11,7 @@
 
 ### Fixed
 
+- `folders list` names each chosen folder and gives its Disk path, not only its id.
+- `api public-settings-update` no longer reports a write it could not confirm when the Disk answers with no body.
+
 - The token steps suggest an app name like `My laptop`.

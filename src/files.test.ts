@@ -224,6 +224,15 @@ describe("files, the options of each command", () => {
     expect(done.json().item).toMatchObject({ from: "disk:/plan.txt", path: "disk:/Archive/old-plan.txt" })
   })
 
+  it("folders list names each chosen folder with its Disk path", async () => {
+    const service = diskApi()
+    const added = await runCli(["personal", "folders", "add", "/Work", "--json"], { service })
+    expect(added.code, added.err).toBe(0)
+    const listed = await runCli(["personal", "folders", "list", "--json"], { service })
+    expect(listed.code, listed.err).toBe(0)
+    expect(listed.json().items).toEqual([{ id: "fake-disk:/Work", name: "Work", path: "disk:/Work" }])
+  })
+
   it("folders browse lists the folders one level down, and --cursor goes on from page.next", async () => {
     const service = diskApi()
     const listed = await runCli(["personal", "folders", "browse", "--folder", "/Work", "--json"], { service })

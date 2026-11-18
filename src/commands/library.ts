@@ -58,6 +58,7 @@ export const libraryCommands = (): Command[] =>
     source: (command, events) => diskFor(command, events, tokenOf(command)),
     // cli-core hands back the source that `source` above built, typed only as its documents part.
     folder: (source, input) => (source as Disk).byPath(diskPath(input)),
+    folderPath: (file) => file.providerMetadata.path,
     ingestion: (store) =>
       documentIngestion<DiskFile>(store, {
         provider: PROVIDER.name,

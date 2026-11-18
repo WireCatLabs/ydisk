@@ -890,3 +890,30 @@ export type OperationStatus = {
   /** Статус операции */
   status: string
 }
+
+/** What each operation answers, by its id. */
+export interface Responses {
+  GetDisk: Disk
+  GetResource: Resource
+  CreateResource: Link
+  UpdateResource: Resource
+  DeleteResource: Link
+  CopyResource: Link
+  GetResourceDownloadLink: Link
+  GetFlatFilesList: FilesResourceList
+  GetLastUploadedFilesList: LastUploadedResourceList
+  MoveResource: Link
+  ListPublicResources: PublicResourcesList
+  PublishResource: Link
+  UnpublishResource: Link
+  GetResourceUploadLink: ResourceUploadLink
+  UploadExternalResource: Link
+  GetPublicResource: PublicResource
+  GetPublicResourceDownloadLink: Link
+  UpdatePublicSettings: unknown
+  SaveToDiskPublicResource: Link
+  GetTrashResource: TrashResource
+  ClearTrash: Link
+  RestoreFromTrash: Link
+  GetOperationStatus: OperationStatus
+}
