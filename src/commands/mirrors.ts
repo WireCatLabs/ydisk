@@ -255,6 +255,7 @@ const removeCommand = () =>
     mcp: false,
     examples: [`${CLI} personal mirrors remove 1a2b3c4d`],
   })
+    .summary("stop mirroring a folder; nothing on either side changes")
     .description(
       `stop mirroring a folder: nothing on ${SERVICE} or in the local folder is changed; its kept versions stay`,
     )
@@ -279,6 +280,7 @@ const statusCommand = () =>
     effects: LOCAL_READ,
     examples: [`${CLI} personal mirrors status --json`],
   })
+    .summary("show what the next sync would send from local changes")
     .description(`show which local files the next sync would send or delete on ${SERVICE}; the Disk is not asked`)
     .argument("[id]", `${ID}; every mirror of the profile when omitted`)
     .action(async function (this: Command, id?: string) {
@@ -490,12 +492,14 @@ const insideOf = (root: string, input: string) => {
 
 const versionsCommand = () =>
   annotate(new Command("versions"), { effects: LOCAL_READ, mcp: false })
+    .summary("versions of mirrored files that syncs replaced or deleted")
     .description("the versions of a mirrored file that syncs replaced or deleted, kept on this computer")
     .addCommand(
       annotate(new Command("list"), {
         effects: LOCAL_READ,
         examples: [`${CLI} personal mirrors versions list 1a2b3c4d notes/plan.md --json`],
       })
+        .summary("list what syncs did to a mirrored file, oldest first")
         .description("list what syncs did to a mirrored file, oldest first, and which versions are still kept")
         .argument("<id>", ID)
         .argument("<path>", "the file's path inside the mirror, like notes/plan.md")

@@ -793,7 +793,7 @@
         "mirrors",
         "status"
       ],
-      "summary": "show which local files the next sync would send or delete on Yandex Disk; the Disk is not asked",
+      "summary": "show what the next sync would send from local changes",
       "effects": {
         "remote": "none",
         "local": "read"
@@ -829,7 +829,7 @@
         "mirrors",
         "remove"
       ],
-      "summary": "stop mirroring a folder: nothing on Yandex Disk or in the local folder is changed; its kept versions stay",
+      "summary": "stop mirroring a folder; nothing on either side changes",
       "effects": {
         "remote": "none",
         "local": "write"
@@ -842,7 +842,7 @@
         "versions",
         "list"
       ],
-      "summary": "list what syncs did to a mirrored file, oldest first, and which versions are still kept",
+      "summary": "list what syncs did to a mirrored file, oldest first",
       "effects": {
         "remote": "none",
         "local": "read"
