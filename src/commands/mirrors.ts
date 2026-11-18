@@ -1,4 +1,4 @@
-import { readFileSync, rmSync, statSync } from "node:fs"
+import { readFileSync, realpathSync, rmSync, statSync } from "node:fs"
 import { isAbsolute, join, relative, resolve, sep } from "node:path"
 import { CliError, isCliError, resolvePaths } from "@wirecat/cli-base"
 import { annotate } from "@wirecat/cli-base/commands"
@@ -33,7 +33,7 @@ import {
   watchMirrors,
 } from "@wirecat/cli-core/documents"
 import { acquireLock, writeFileAtomic } from "@wirecat/cli-core/files"
-import { type Asker, guardedWrite, type KeyedGuard, newOperationId } from "@wirecat/cli-core/sends"
+import { type Asker, guardedWrite, type KeyedGuard, newOperationId, refusedPlace } from "@wirecat/cli-core/sends"
 import { Command, Option } from "commander"
 import * as v from "valibot"
 import { DELETE_KEY, UPLOAD_KEY } from "../config.js"
@@ -187,6 +187,35 @@ const allOf = <T>(command: string, items: T[]) =>
 
 const ID = "mirror id from mirrors list"
 
+const realOf = (path: string) => {
+  try {
+    return realpathSync(path)
+  } catch {
+    return resolve(path)
+  }
+}
+
+/**
+ * A mirror would send every file under its folder to the Disk. `files upload`'s rule refuses credential folders, the
+ * WireCat apps' folders and the store; a folder holding this CLI's own folders would also send its state and the
+ * versions it keeps, and change under every sync.
+ */
+const refuseSensitive = (root: string, env: NodeJS.ProcessEnv) => {
+  const real = realOf(root)
+  const own = Object.values(resolvePaths({ appName: IDENTITY.appName, prefix: IDENTITY.envPrefix, env })).map(realOf)
+  const holds = own.some((dir) => {
+    const way = relative(real, dir)
+    return way === "" || (!way.startsWith("..") && !isAbsolute(way))
+  })
+  if (holds || refusedPlace(root, IDENTITY, env))
+    throw new CliError(
+      "validation_error",
+      `${root} is not mirrored: credential folders, the WireCat apps' folders and a folder holding ${CLI}'s own ` +
+        "settings or state are never sent to the Disk",
+      { reason: "mirror.not-folder" },
+    )
+}
+
 const addCommand = () =>
   annotate(new Command("add"), {
     effects: FETCH,
@@ -209,6 +238,7 @@ const addCommand = () =>
       } catch {}
       if (!directory)
         throw new CliError("validation_error", "the local path is not a folder", { reason: "mirror.not-folder" })
+      refuseSensitive(root, contextOf(this).env)
       const home = mirrorsHome(this)
       const found = await withDisk(this, async (disk) => {
         const remote = await disk.byPath(diskPath(folder))

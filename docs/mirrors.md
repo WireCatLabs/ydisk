@@ -34,6 +34,10 @@ ydisk personal mirrors add /Notes ~/notes
 The tool checks that both are folders and saves the pair. It copies nothing yet. `mirrors list` shows your mirrors
 with their ids; the commands below take an id when you have more than one mirror.
 
+Some folders are never mirrored, because a sync would send every file in them to the Disk: credential folders such as
+`~/.ssh`, `~/.gnupg` and the keyrings, browser profiles, the WireCat apps' folders, and any folder that holds
+`ydisk`'s own settings or state. `files upload` refuses the same places.
+
 A mirror belongs to the account the profile was signed in to when you added it. A sync signed in to another account
 is refused.
 

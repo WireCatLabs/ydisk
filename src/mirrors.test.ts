@@ -400,3 +400,17 @@ it("watch refuses to ask the Disk more often than every 10 seconds", async () =>
   const fast = await cli(["watch", id, "--every", "1s"])
   expect(fast.json()).toMatchObject({ error: { code: "validation_error" } })
 })
+
+it("add refuses a credential folder, and a folder that is or holds the CLI's own folders", async () => {
+  const { cli, dir, env, disk } = setup()
+  const ssh = join(dir, "home", ".ssh")
+  mkdirSync(ssh, { recursive: true })
+  const keyrings = join(dir, "home", ".local", "share", "keyrings")
+  mkdirSync(keyrings, { recursive: true })
+  mkdirSync(env.YDISK_STATE_DIR, { recursive: true })
+  for (const path of [ssh, keyrings, env.YDISK_STATE_DIR, dir]) {
+    const refused = await cli(["add", "/Notes", path])
+    expect(refused.json(), path).toMatchObject({ error: { code: "validation_error", reason: "mirror.not-folder" } })
+  }
+  expect(disk.calls).toEqual([])
+})
