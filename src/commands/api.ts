@@ -25,6 +25,8 @@ const withoutLinks =
     const response = await fetch(input, init)
     if (!response.headers.get("content-type")?.includes("json")) return response
     const text = await response.text()
+    // An empty answer stays bodiless: a body of "" with no length reads as JSON that could not be parsed.
+    if (text === "") return new Response(null, response)
     let body: unknown
     try {
       body = JSON.parse(text)
