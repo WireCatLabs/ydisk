@@ -72,7 +72,34 @@ node -e '
   if (read(process.argv[1]) !== read(process.argv[2])) throw new Error("a moved file got a new resource_id")' \
   "$work/before.json" "$work/after.json"
 "${cli[@]}" live files delete "/ydisk-live/moved-$stamp.txt" --yes --json >/dev/null
+# Facts a two-way sync builds on that Yandex's docs leave open (seen on 2026-11-18): the Disk's sha256 is the content's,
+# a replacing upload keeps the resource_id, the Disk revision moves with a write, a delete with a wrong md5 gets 409.
+raw() { "${cli[@]}" live api "$@" 2>&1 || true; }
+echo "probe one $stamp" >"$work/probe.txt"
+"${cli[@]}" live files upload "$work/probe.txt" --folder /ydisk-live --name "probe-$stamp.txt" --json >/dev/null
+raw resources-list --path "disk:/ydisk-live/probe-$stamp.txt" >"$work/probe-1.json"
+raw disk-get --fields revision >"$work/rev-1.json"
+echo "probe two, longer $stamp" >"$work/probe.txt"
+"${cli[@]}" live files upload "$work/probe.txt" --folder /ydisk-live --name "probe-$stamp.txt" --replace --yes --json >/dev/null
+raw resources-list --path "disk:/ydisk-live/probe-$stamp.txt" >"$work/probe-2.json"
+raw disk-get --fields revision >"$work/rev-2.json"
+raw resources-delete --path "disk:/ydisk-live/probe-$stamp.txt" --md5 00000000000000000000000000000000 --yes >"$work/del-wrong.json"
+raw resources-list --path "disk:/ydisk-live/probe-$stamp.txt" --fields path >"$work/after-wrong.json"
+node -e '
+  const fs = require("fs")
+  const read = (f) => JSON.parse(fs.readFileSync(f, "utf8"))
+  const [one, two, r1, r2, del, after] = process.argv.slice(1, 7).map(read)
+  const local = require("crypto").createHash("sha256").update(fs.readFileSync(process.argv[7])).digest("hex")
+  const fail = (message) => { throw new Error(message) }
+  if (two.item.sha256 !== local) fail("the Disk sha256 is not the sha256 of the content")
+  if (one.item.resource_id !== two.item.resource_id) fail("a replacing upload gave the file a new resource_id")
+  if (!(r2.item.revision > r1.item.revision)) fail("the Disk revision did not move with a write")
+  if (del.error?.details?.status !== 409) fail("a delete with a wrong md5 was not refused with 409")
+  if (!after.item?.path) fail("a delete with a wrong md5 removed the file")' \
+  "$work/probe-1.json" "$work/probe-2.json" "$work/rev-1.json" "$work/rev-2.json" "$work/del-wrong.json" \
+  "$work/after-wrong.json" "$work/probe.txt"
+"${cli[@]}" live files delete "/ydisk-live/probe-$stamp.txt" --yes --json >/dev/null
 "${cli[@]}" live doctor --json >/dev/null
 
 "${cli[@]}" live session end --json >/dev/null
-echo "live check passed: describe format 2, sign-in, files list, folders browse, download, upload, move and delete, sync, search, doctor, sign-out"
+echo "live check passed: describe format 2, sign-in, files list, folders browse, download, upload, move and delete, the sync facts, sync, search, doctor, sign-out"
