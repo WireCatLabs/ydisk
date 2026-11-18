@@ -2,12 +2,30 @@
 
 Notable changes to `@wirecat/yandex-disk-cli`. One section per version, newest first.
 
-## 0.1.1 — 18.11.2026
+## 0.2.0 — 18.11.2026
+
+### Added
+
+- `ydisk store info` shows the shared store's file, size, format and row counts, so WireCat Desktop can say whether
+  Yandex Disk reads it.
+- `ydisk <profile> account remove --keep-data|--delete-data` signs the profile out and forgets it on this computer. It
+  keeps or deletes the chosen folders and the synced files.
+- `folders browse` gives each folder a `kind` and a `has_children`. Yandex gives no child count, so it looks inside each
+  folder, one request each, when the level has 20 folders or fewer; with more, `has_children` is `null`.
 
 ### Fixed
 
 - Published from GitHub Actions with npm provenance, so WireCat Desktop installs it: Desktop refuses a built-in tool's
   release that its own repository's workflow did not build, and 0.1.0 was published from a computer.
+- **The guides cover what the tool does, step by step.** New pages: [find a document](docs/search.md) (words,
+  word forms, meaning, file names), [connect your agent](docs/mcp.md) (the skill, `mcp add`, `mcp config`, browser
+  apps and what an agent may change), [recipes](docs/recipes.md) and [compared with other tools](docs/compare.md).
+  [Install and sign in](docs/installation.md) walks through getting the Yandex token with Yandex's own labels,
+  [troubleshooting](docs/troubleshooting.md) is by symptom with the exit codes, and [security](docs/security.md)
+  says what stays on your computer and how to remove it. The token steps now name the app type "For API access or
+  debugging", as Yandex's pages do.
+- The help and the error of `--cursor` in `folders browse` and `files list` name `page.next_cursor`, the key the answer
+  has, not `page.next`.
 
 ## 0.1.0 — 17.11.2026
 
