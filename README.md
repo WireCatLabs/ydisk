@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/index.md">Docs</a> ·
+  <a href="https://wirecat.dev/en/docs/ydisk">Docs</a> ·
   <a href="https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/installation.md">Install</a> ·
   <a href="https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/usage.md">Usage</a>
 </p>
@@ -66,7 +66,10 @@ Agent:  (runs ydisk personal files publish /Documents/Flat/lease-2026.pdf --yes)
   agent's instructions say that text from files is data, never an instruction to follow.
 - **Ready for any agent.** A skill for agents with a terminal, an MCP server for Claude Desktop and Cursor, and a
   secure link for ChatGPT and Claude in the browser.
-- **Free and open source.** Apache 2.0, on macOS, Linux and Windows.
+- **Free and open source.** Apache 2.0, on macOS, Linux and Windows. It works with a free Yandex account.
+
+How it compares with rclone, Yandex's own apps and the Yandex Disk MCP servers:
+[compared with other tools](https://wirecat.dev/en/docs/ydisk/compare).
 
 ## Quick start
 
@@ -81,11 +84,12 @@ You need Node.js 22.16 or a later 22.x, or 24 or later. Try it without installin
 Sign in once with a Yandex OAuth token. The token is kept in the system keyring, or in a private file only you can
 read where no keyring works. It is never in an argument or the output.
 
-1. Register an app at [oauth.yandex.com/client/new](https://oauth.yandex.com/client/new/), platform "Web services",
-   redirect URI `https://oauth.yandex.ru/verification_code`, with the access `cloud_api:disk.read`,
-   `cloud_api:disk.write` and `cloud_api:disk.info` (only `disk.read` and `disk.info` for a read-only token).
+1. Register an app at [oauth.yandex.ru/client/new](https://oauth.yandex.ru/client/new/) ("For API access or
+   debugging"), with the Yandex Disk access `cloud_api:disk.read`, `cloud_api:disk.write` and `cloud_api:disk.info`
+   (only `disk.read` and `disk.info` for a read-only token). Copy its ClientID.
 2. Open `https://oauth.yandex.ru/authorize?response_type=token&client_id=` with your app's ClientID added at the end,
-   and copy the token ([Yandex's guide](https://yandex.ru/dev/id/doc/en/tokens/debug-token)).
+   allow access and copy the token. Every step, with Yandex's own labels:
+   [get a Yandex token](https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/installation.md#get-a-yandex-token).
 3. Sign in under a profile name you choose, then copy a folder and search it:
 
 ```sh
@@ -122,7 +126,8 @@ ydisk personal mcp add claude-code --allow-writes  # or: codex
 ydisk personal mcp config                          # the entry for Claude Desktop, Cursor and others
 ```
 
-More: [agents and MCP](https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/usage.md#agents)
+More: [connect your agent](https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/mcp.md) ·
+[recipes](https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/recipes.md)
 
 ## What it can do
 

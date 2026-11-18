@@ -1,68 +1,126 @@
-# Use it
+# Folders and sync
 
-This page explains how a command is built, and how an agent uses the tool. Read it before your first command.
+Choose the Disk folders whose text you want to search, keep their copy current, and work with any file on the Disk
+live. After this page your agent can answer from the folders you chose and change files only where you allow it. It
+assumes you have [signed in](installation.md).
+
+**On this page:**
+
+1. [The profile comes first](#the-profile-comes-first)
+2. [Choose folders](#choose-folders)
+3. [Sync](#sync)
+4. [What the copy holds](#what-the-copy-holds)
+5. [Read a synced document](#read-a-synced-document)
+6. [Work with files live](#work-with-files-live)
+7. [Output for scripts](#output-for-scripts)
 
 ## The profile comes first
 
 A profile is a name you choose for one account. It is the first word of every command that uses an account:
 
 ```sh
-ydisk personal config show
+ydisk personal status
 ```
 
 `YDISK_PROFILE=personal` does the same for one shell session. No profile is ever assumed, not even the only one: a
 command without one stops with exit code 2 and lists the profiles on this computer.
 
-## Copy folders and search them
+## Choose folders
 
-Choose the Disk folders whose text you want to search, then copy them to your computer with `sync`:
+`folders browse` lists the Disk one level at a time, live, so you can find a folder by its path:
 
 ```sh
-ydisk personal folders browse                # the folders at the top of the Disk
-ydisk personal folders add /Documents
-ydisk personal sync
-ydisk personal search "quarterly budget"
+ydisk personal folders browse
+ydisk personal folders browse --folder /Documents
+ydisk personal folders add /Documents/Contracts
 ```
 
-`folders browse --folder /Documents` goes one level down. `folders list` shows the folders you chose, and
-`folders remove` takes one out. Each `sync` walks the chosen folders again and reads only the files that changed.
-The text of PDF, docx, xlsx, CSV, TSV, text and Markdown files is copied; other files are kept by name. Run `sync`
-again whenever you want the copy to catch up.
+A chosen folder brings in everything under it, subfolders included. `folders list` shows the folders you chose, and
+`folders remove` takes one out. The next sync drops its documents from the copy.
 
-## Work with the files live
+Choose a few folders that hold documents, not the whole Disk. Yandex Disk does not tell a tool what changed, so each
+sync lists every chosen folder and its subfolders again. A folder of photos adds listing time and no searchable text.
 
-The `files` commands reach the Disk directly and need no `sync`:
+## Sync
+
+```sh
+ydisk personal sync
+ydisk personal status
+```
+
+`sync` downloads the files that are new or whose content changed since the last sync, and reads their text. A file
+deleted on the Disk leaves the copy. A file moved inside the chosen folders keeps its tags and notes.
+
+One sync reads up to 200 files (`--limit`) and lists up to about 10,000 entries, then saves where it stopped. A large
+folder takes several runs: run `sync` again until `status` shows no pending work. A stop loses nothing, and the next
+sync goes on from where the last one stopped.
+
+Run `sync` whenever you want the copy to catch up, for example before you ask your agent about recent files. Nothing
+runs in the background. `sync --rescan` reads every chosen folder from the start. Run it once, then go on with a plain
+`sync`.
+
+A chosen folder that you rename or move on the Disk is no longer found, and its documents leave the copy. Add it
+again under its new path.
+
+## What the copy holds
+
+| On the Disk | In the copy |
+| --- | --- |
+| PDF with a text layer, Word `.docx`, Excel `.xlsx`, CSV, TSV, plain text, Markdown | The text, the name, the path, the size and the dates |
+| A scanned PDF or a picture | The name, the path and the dates. There is no text to read |
+| Any other file, and any file over 50 MB | The name, the path and the dates |
+
+`status` lists each file kept by name only, with the reason. The files themselves stay on the Disk. The copy holds
+their text. Times are kept and shown in UTC.
+
+## Read a synced document
+
+```sh
+ydisk personal documents list
+ydisk personal documents show 1a2b3c --json
+ydisk personal documents export 1a2b3c --output ./contract.md
+```
+
+`documents show` prints the whole text of one document, found by its id from `search` or `documents list`. The id
+above is an example. `documents export` writes it to a new Markdown file. Tags, notes and memories stay with a
+document and never reach the Disk. See [find a document](search.md).
+
+## Work with files live
+
+The `files` commands go to the Disk directly and need no sync. Paths are Disk paths, such as `/Documents/plan.pdf`.
 
 ```sh
 ydisk personal files list --folder /Documents
+ydisk personal files show /Documents/plan.pdf
 ydisk personal files download /Documents/plan.pdf --json
+ydisk personal files download /Documents/plan.pdf --output ./plan.pdf
+ydisk personal files upload ./notes.md --folder /Documents
+ydisk personal files copy /Documents/plan.pdf --folder /Archive
 ydisk personal files move /Documents/old.pdf --folder /Archive
+ydisk personal files create /Projects/2026
+ydisk personal files delete /Documents/old.pdf
+ydisk personal files restore trash:/old.pdf
+ydisk personal files publish /Documents/plan.pdf
+ydisk personal files unpublish /Documents/plan.pdf
 ```
 
-`files delete` moves a file to the trash, and `files restore trash:/old.pdf` brings it back. Deleting, replacing and
-public links ask first at a terminal; see [settings](configuration.md#permissions).
+- `files download` without `--output` answers the file's text, up to 200,000 characters, so an agent can read a file
+  outside the chosen folders without saving it.
+- `files delete` moves a file to the Disk's trash, and `files restore` brings it back by its path in the trash.
+- `files publish` makes a public link that anyone who has it can open. `files unpublish` closes it.
+- `--replace` on an upload, a copy or a move overwrites a file already at that path.
+
+At a terminal the tool asks before a delete, an overwrite and a public link. Over MCP there is no one to ask, so set
+those permissions for an agent. See [settings](configuration.md#permissions). Add `--dry-run` to any change to see
+what it would do without doing it.
+
+Every operation of Yandex's Disk API is a command too: `ydisk personal api list` lists them, and
+`ydisk personal api show resources-list` shows one operation's parameters without calling Yandex.
 
 ## Output for scripts
 
-Every command except `mcp serve` on stdin and stdout takes `--json`, and prints one JSON value on stdout. Errors are JSON on stderr, with a code to branch
-on. The [command reference](commands.md) lists the codes.
+Every command except `mcp serve` takes `--json` and prints one JSON value on stdout. Errors are JSON on stderr, with
+a `code` to branch on, and each kind of failure has its own exit code. The
+[command reference](commands.md) lists them.
 
-## Agents
-
-`ydisk skill install` puts the tool's skill where Claude Code, Codex, Gemini CLI and OpenClaw look for it.
-`ydisk skill install --for hermes` also adds that folder to Hermes Agent's own settings, so a bare `skill install`
-leaves Hermes out. `ydisk personal mcp serve` serves the profile's commands over MCP, on stdin and stdout:
-
-```sh
-claude mcp add ydisk -- ydisk personal mcp serve
-```
-
-The server offers every command, the ones that write included. The profile's permissions decide what runs; see
-[settings](configuration.md#permissions).
-
-For ChatGPT and Claude in the browser,
-`ydisk personal mcp serve --http --public-url https://laptop.example.ts.net` serves on `127.0.0.1` (port 8765, or
-`--port`) behind your own tunnel. A browser app logs in with a one-time code that the command prints;
-`ydisk personal mcp revoke` ends every login. `ydisk personal mcp server start` runs the same
-server in the background, `mcp server status` shows its port, the login code and the apps logged in, and
-`mcp server stop` ends it.
+Next: [find a document](search.md), or [connect your agent](mcp.md).
