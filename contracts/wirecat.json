@@ -766,6 +766,104 @@
     },
     {
       "path": [
+        "mirrors",
+        "add"
+      ],
+      "summary": "mirror a local folder and a Disk folder both ways",
+      "effects": {
+        "remote": "read",
+        "local": "write"
+      },
+      "permission": "mirrors.add"
+    },
+    {
+      "path": [
+        "mirrors",
+        "list"
+      ],
+      "summary": "list this profile's mirrors",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "mirrors.list"
+    },
+    {
+      "path": [
+        "mirrors",
+        "status"
+      ],
+      "summary": "show which local files the next sync would send or delete on Yandex Disk; the Disk is not asked",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "mirrors.status"
+    },
+    {
+      "path": [
+        "mirrors",
+        "sync"
+      ],
+      "summary": "sync mirrors both ways once",
+      "effects": {
+        "remote": "write",
+        "local": "write"
+      },
+      "permission": "mirrors.sync"
+    },
+    {
+      "path": [
+        "mirrors",
+        "watch"
+      ],
+      "summary": "keep syncing both ways until Ctrl-C or --timeout",
+      "effects": {
+        "remote": "write",
+        "local": "write"
+      },
+      "permission": "mirrors.watch"
+    },
+    {
+      "path": [
+        "mirrors",
+        "remove"
+      ],
+      "summary": "stop mirroring a folder: nothing on Yandex Disk or in the local folder is changed; its kept versions stay",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "mirrors.remove"
+    },
+    {
+      "path": [
+        "mirrors",
+        "versions",
+        "list"
+      ],
+      "summary": "list what syncs did to a mirrored file, oldest first, and which versions are still kept",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "mirrors.versions.list"
+    },
+    {
+      "path": [
+        "mirrors",
+        "versions",
+        "restore"
+      ],
+      "summary": "put a kept version back into the local folder",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "mirrors.versions.restore"
+    },
+    {
+      "path": [
         "store",
         "info"
       ],
@@ -1306,7 +1404,9 @@
   "entities": {
     "selected_folder": {
       "fields": [
-        "id"
+        "id",
+        "name",
+        "path"
       ]
     },
     "document": {

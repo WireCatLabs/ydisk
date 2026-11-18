@@ -24,6 +24,7 @@ import { accountCommand } from "./commands/account.js"
 import { apiCommand } from "./commands/api.js"
 import { filesCommand } from "./commands/files.js"
 import { libraryCommands } from "./commands/library.js"
+import { mirrorsCommand } from "./commands/mirrors.js"
 import { sessionCommand } from "./commands/session.js"
 import { configuration } from "./config.js"
 import { diskFor, tokenOf } from "./context.js"
@@ -79,6 +80,7 @@ export const definition = (): ProgramDefinition => ({
     accountCommand(),
     ...libraryCommands(),
     filesCommand(),
+    mirrorsCommand(),
     storeCommand(),
     apiCommand(),
     doctorCommand(),

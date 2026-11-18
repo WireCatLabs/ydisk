@@ -10,6 +10,8 @@ import { IDENTITY, SERVICE } from "./identity.js"
 
 /** The key every overwrite and permanent delete also checks, as the api group's `deletingFlags` do. */
 export const DELETE_KEY = "files.delete"
+/** The key every file a command puts on the Disk checks, as `files upload` does. */
+export const UPLOAD_KEY = "files.upload"
 /** A public link opens the file to anyone who has it. */
 export const SHARE_KEY = "files.share"
 
@@ -51,6 +53,12 @@ export const API = {
 
 const REPLACES = { key: DELETE_KEY, when: "with --replace" }
 
+/** A mirror's sync writes on both sides: what it sends checks as an upload, what it replaces or trashes as a delete. */
+const MIRROR_CHECKS = [
+  { key: UPLOAD_KEY, when: "for each file it puts on the Disk" },
+  { key: DELETE_KEY, when: "for each file it replaces or moves to a trash, on either side" },
+]
+
 /** What a `files` write checks beside its own key, so `--dry-run` shows the same keys as the run. */
 const FILES_CHECKS: Readonly<Record<string, readonly (string | ConditionalKey)[]>> = {
   "files upload": [REPLACES],
@@ -58,6 +66,8 @@ const FILES_CHECKS: Readonly<Record<string, readonly (string | ConditionalKey)[]
   "files move": [REPLACES],
   "files publish": [SHARE_KEY],
   "files unpublish": [SHARE_KEY],
+  "mirrors sync": MIRROR_CHECKS,
+  "mirrors watch": MIRROR_CHECKS,
 }
 
 const api = serviceApiPermissions(API)

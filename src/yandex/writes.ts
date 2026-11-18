@@ -25,7 +25,9 @@ export const diskWrites = (api: Transport, links: FetchLike, signal?: AbortSigna
   const send = async (request: Request) => outcomeOf(await api.send(request, Answer))
   return {
     createFolder: (path: string) => send({ method: "PUT", path: "disk/resources", query: { path } }),
-    trash: (path: string) => send({ method: "DELETE", path: "disk/resources", query: { path, permanently: "false" } }),
+    /** With `md5`, the Disk refuses with 409 when the file there now has other content. */
+    trash: (path: string, md5?: string) =>
+      send({ method: "DELETE", path: "disk/resources", query: { path, permanently: "false", md5 } }),
     restore: (trashPath: string) =>
       send({ method: "PUT", path: "disk/trash/resources/restore", query: { path: trashPath } }),
     transfer: (kind: "copy" | "move", from: string, to: string, replace: boolean) =>
