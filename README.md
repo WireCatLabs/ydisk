@@ -38,6 +38,8 @@
 - **Keep the Disk tidy.** Move, copy, rename into a folder, and delete to the trash, where `files restore` brings a
   file back.
 - **Share on request.** A public link for a file or folder, and close it again when you are done.
+- **A folder on your computer that stays in step with the Disk.** Edit files with your own tools; a mirror sends
+  your changes up and brings the Disk's down. A deleted file goes to a trash, never away.
 - **See the whole picture.** The copies sit next to your messages, mail, notes and meetings from the other WireCat
   tools, so one search covers all of them.
 
@@ -160,6 +162,17 @@ ydisk personal files unpublish /Documents/plan.pdf
 ```
 
 `files show`, `files copy` and `files create` (a new folder) are commands too.
+
+### Keep a local folder in step
+
+```sh
+ydisk personal mirrors add /Notes ~/notes
+ydisk personal mirrors sync --dry-run                 # what it would copy, and nothing else
+ydisk personal mirrors sync                           # both ways; a file changed on both sides is reported
+ydisk personal mirrors watch                          # keep syncing until Ctrl-C
+```
+
+More: [mirrors](https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/mirrors.md)
 
 ### The whole Disk API
 

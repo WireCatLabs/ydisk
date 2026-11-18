@@ -19,9 +19,12 @@ such as the keyring, permissions, MCP and what never reaches a log, is on the
 | The Yandex token | The system keyring, or a private file where there is none | `ydisk personal session end` |
 | The text of the files in the chosen folders, with their names, paths, sizes, dates and MD5 checksums | The local store, `wirecat.db`, shared with the other WireCat tools | `folders remove` with the folder's id from `folders list`, then `sync` |
 | Your tags, notes and memories about documents | The local store | `tags remove`, `notes remove` |
+| Each mirror's folder pair, its last sync and the versions a sync replaced or deleted here | `profiles/<profile>/mirrors.json` and `profiles/<profile>/mirrors/` in the state folder, readable by you only | `mirrors remove <id>` forgets the pair; the versions stay until they expire ([mirrors](mirrors.md#earlier-versions-of-a-file)) |
+| Files a mirror took off this computer because they were deleted on the Disk | `.wirecat-trash/` inside the mirrored folder | Delete the folder when you no longer need them |
 | Settings and run records | The folders `ydisk doctor` shows | `ydisk runs list` shows them. They expire after the days in [settings](configuration.md#run-records) |
 
-The files themselves stay on the Disk. A copy of a file is saved only when you run `files download --output`.
+The files themselves stay on the Disk. A copy of a file is saved only when you run `files download --output`, or in
+a folder you [mirror](mirrors.md).
 Public links (`public_url`) are not kept by the sync. Nothing goes to WireCat: there is no WireCat server and no
 account with us.
 
@@ -42,7 +45,9 @@ Besides Yandex, `ydisk` asks the npm registry once a day whether a newer version
 
 Over MCP an agent reads a file's text with `files download` but cannot save it to a path: `--output` is the owner's
 only. `files upload` refuses credential files, browser profiles and the WireCat folders unless the owner adds
-`--allow-any-file`. `files delete`, `--replace` and the public-link commands ask first at a terminal. Over MCP only
+`--allow-any-file`. `files delete`, `--replace` and the public-link commands ask first at a terminal. A
+[mirror sync](mirrors.md#what-an-agent-may-do) checks `files.upload` for each file it sends and `files.delete` for
+each file it replaces or moves to a trash, on either side; an agent cannot add or remove a mirror. Over MCP only
 `deny` stops them, so set `files.delete=deny` and `files.share=deny` for an agent that should not, and `files.upload=deny` for one that
 should put no local file on the Disk.
 

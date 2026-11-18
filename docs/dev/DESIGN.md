@@ -28,7 +28,9 @@ on cli-core's shared documents commands.
 | `files show`, `files create`, `files delete` | `files get`, `files mkdir`, `files trash` | the shared vocabulary's verbs; drive keeps its older words in a lint baseline |
 | `--folder <path>`, `--name`, `--replace` | `--parent <id>`, `--overwrite` | the vocabulary's flags; the Disk API addresses by path |
 | `files publish`, `files unpublish` | `permissions` | the Disk has public links, not per-person sharing |
-| no `mirrors`, `sheets`, `comments`, `revisions` | — | Google-only, or (mirrors) a two-way engine port not built for the Disk yet |
+| `mirrors add <folder> <path>` | `mirrors add <path> --parent <id>` | the Disk addresses a folder by path; the Disk side is `disk` in `--keep` and conflict reports |
+| `mirrors versions list\|restore` | — | the whole-file engine keeps local versions; drive's document push merges text instead |
+| no `sheets`, `comments`, `revisions` | — | Google-only |
 
 ## The source
 
@@ -46,9 +48,40 @@ on cli-core's shared documents commands.
 - **Writes** (`files …`) go through the profile's guard and the send journal, and are never retried. An answer 202
   names the Disk's own operation; `api operations-get` follows it.
 
+## Mirrors
+
+Two-way folder sync on cli-core's whole-file engine (`syncFileMirrors`,
+[cli-core Documents](https://github.com/WireCatLabs/cli-core/blob/main/docs/dev/DOCUMENTS.md#sync-plain-files-with-a-provider)).
+ydisk holds no sync logic: `src/yandex/mirror-target.ts` is the Disk as a `FileTarget`, `src/commands/mirrors.ts`
+the commands. Settled on 2026-11-18 by live probes, asserted by `scripts/live.sh`:
+
+- The Disk's `sha256` is the plain sha256 of the content; files are compared by it.
+- **Replace = check, then overwrite.** The API has no conditional upload. `upload` reads the file and compares its
+  hash with what the listing saw, then asks for a link with `overwrite=true`. A change made in the seconds between
+  is lost; in exchange the file keeps its `resource_id`, so tags and notes stay (an overwrite keeps the id, checked
+  live). A new file asks with `overwrite=false`, and the Disk refuses one created meanwhile (409).
+- **Trash passes the expected md5**: `DELETE ?permanently=false&md5=`, which the Disk refuses with 409 when the
+  file changed. Deletions cross sides into both trashes, with the engine's guard (more than 2 files, and over 50 or
+  over a quarter of the mirror, needs `--allow-deletions N`).
+- **Renames:** a Disk-side move is found by `resource_id` (kept across a move, checked live) and applied locally. A
+  local rename is a deletion and a new file.
+- **Watch** polls `GET /v1/disk?fields=revision`, which moves with every write, and lists only when it moved.
+- **The listing** walks the folder 200 entries a page without a `fields` filter (one mistyped field would drop
+  `sha256` on the real Disk while the fake still sent it). A folder that fails to list, or more than 10,000 files,
+  makes the listing incomplete, so no file is taken as deleted.
+- **Storage:** `profiles/<profile>/mirrors.json` (the pairs with the account), `mirrors/<id>.json` (the engine's
+  state; `add` pins the Disk folder's `resource_id`), `mirrors/<id>.versions/` (kept local versions) and
+  `mirrors/sync.lock`, one lock for sync, watch, restore and remove. `remove` deletes the state, so a pair added
+  again starts with a first sync, which deletes nothing.
+- **Permissions:** every write runs under `mirrors.sync` or `mirrors.watch`; a file put on the Disk also checks
+  `files.upload`, a replace or trash on either side `files.delete`. Each set of keys has its own guard, so a deny on
+  `files.delete` still lets new files through, and a key allowed once is not asked again in the run.
+- **MCP:** `list`, `status` and `sync`. `add`, `remove` and `versions` are `mcp: false`; `watch` is persistent;
+  `--allow-deletions` and `--repin` are owner-only options.
+
 ## What is hand-written
 
-`src/yandex/` (transport, source), `src/commands/{library,files}.ts`, `src/context.ts` and the tests with their fakes
+`src/yandex/` (transport, source, mirror target), `src/commands/{library,files,mirrors}.ts`, `src/context.ts` and the tests with their fakes
 (`src/testing/fake-disk.ts`, an in-memory Disk; `src/testing/disk-api.ts`, cli-base's strict fake from the spec).
 The documents commands, the sync engine, the store, search and MCP are cli-core's; the `api` group is generated.
 
