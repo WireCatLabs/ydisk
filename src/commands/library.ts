@@ -1,11 +1,11 @@
-import { CliError } from "@wirecat/cli-base"
+import { CliError, isCliError } from "@wirecat/cli-base"
 import { annotate } from "@wirecat/cli-base/commands"
 import { listOf, nextUsually, REMOTE_READ } from "@wirecat/cli-core/cli"
 import { documentIngestion } from "@wirecat/cli-core/documents"
 import { type DocumentWords, documentLibraryCommands } from "@wirecat/cli-core/documents/cli"
 import type { Command } from "commander"
 import { configuration } from "../config.js"
-import { type Disk, diskFor, tokenOf } from "../context.js"
+import { type Disk, diskFor, PACE, tokenOf } from "../context.js"
 import { IDENTITY, SERVICE } from "../identity.js"
 import { type DiskFile, diskPath, isFolder, PAGE, skipReason } from "../yandex/source.js"
 
@@ -31,6 +31,18 @@ const WORDS: DocumentWords = {
     folderToAdd: "/Documents",
     syncLimit: "how many files to read from Yandex Disk in this run",
   },
+}
+
+/** Whether a folder holds a folder; null when its first page has none and more pages exist, so it is not known. */
+const hasFolders = async (disk: Disk, folder: DiskFile) => {
+  try {
+    const first = await disk.page(folder.providerMetadata.path, 0)
+    return first.files.some(isFolder) ? true : first.more ? null : false
+  } catch (error) {
+    // One folder the token cannot list, or a busy moment, leaves only its own answer unknown; a refused token ends all.
+    if (isCliError(error) && error.code === "authentication_error") throw error
+    return null
+  }
 }
 
 const external = (id: string) => `${id}.md`
@@ -93,26 +105,44 @@ export const libraryCommands = (): Command[] =>
             `${IDENTITY.command} personal folders browse --folder /Work --json`,
           ],
         })
-          .description("list Disk folders one level at a time, live, to choose one for folders add")
+          .summary("list Disk folders one level at a time, live, to choose one for folders add")
+          .description(
+            "list Disk folders one level at a time, live, to choose one for folders add; has_children says whether a " +
+              `folder holds a folder, or is null when the level has more than ${PACE.burst} folders and it is not looked up`,
+          )
           .option("--folder <folder>", "the Disk folder to list inside, by its path; the top of the Disk without it")
           .option(
             "--cursor <cursor>",
-            "go on from where the last page stopped; page.next gives it, with the same --folder",
+            "go on from where the last page stopped; page.next_cursor gives it, with the same --folder",
           )
           .action(async (args: { folder?: string; cursor?: string }) => {
             const path = diskPath(args.folder ?? "/")
             const offset = args.cursor === undefined ? 0 : Number(args.cursor)
             if (!Number.isSafeInteger(offset) || offset < 0)
-              throw new CliError("validation_error", "--cursor takes the value page.next gave", { param: "--cursor" })
+              throw new CliError("validation_error", "--cursor takes the value page.next_cursor gave", {
+                param: "--cursor",
+              })
             const chosen = new Set(tools.roots())
             // The source `source` above built, typed by cli-core only as its documents part.
-            const page = await tools.withSource((source) => (source as Disk).page(path, offset))
+            const { page, inside } = await tools.withSource(async (source) => {
+              const disk = source as Disk
+              const level = await disk.page(path, offset)
+              const folders = level.files.filter(isFolder)
+              // Yandex gives no child count: each folder costs one listing, so a level with more folders than the
+              // pace's burst leaves has_children unknown rather than wait on hundreds of requests.
+              const inside = new Map<string, boolean | null>()
+              if (folders.length <= PACE.burst)
+                await Promise.all(folders.map(async (folder) => inside.set(folder.id, await hasFolders(disk, folder))))
+              return { page: level, inside }
+            })
             tools.output(
               listOf("folders browse", {
                 items: page.files.filter(isFolder).map((file) => ({
                   id: file.id,
                   name: file.name,
                   path: file.providerMetadata.path,
+                  kind: "folder",
+                  has_children: inside.get(file.id) ?? null,
                   added: chosen.has(file.id),
                 })),
                 limit: PAGE,

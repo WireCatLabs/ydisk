@@ -107,6 +107,30 @@ ydisk session list
 
 **Example:** `ydisk session list`, `ydisk session list --json`
 
+## `ydisk account`
+
+this profile on this computer
+
+### `ydisk account remove`
+
+sign the profile out, then forget it on this computer: its settings, its saved sign-in and its files; --keep-data leaves its messages in the store, where search still finds them, --delete-data deletes them; asks first, or --yes
+
+**Changes something on this computer only.**
+
+```sh
+ydisk account remove [options]
+```
+
+| Option | What it does |
+|---|---|
+| `--keep-data` | leave what the store holds of this account, still searchable. |
+| `--delete-data` | delete what the store and the tool's own files hold of this account. |
+| `--dry-run` | list what it would remove and keep, and change nothing. |
+
+**Returns:** account removal — profile, data, dry_run, account, revoked, config_file, removed, kept; every field: ydisk commands info account remove
+
+**Example:** `ydisk personal account remove --keep-data --dry-run`, `ydisk personal account remove --delete-data --yes`
+
 ## `ydisk folders`
 
 choose the Disk folders sync copies
@@ -145,7 +169,7 @@ ydisk folders list [query]
 
 ### `ydisk folders browse`
 
-list Disk folders one level at a time, live, to choose one for folders add
+list Disk folders one level at a time, live, to choose one for folders add; has_children says whether a folder holds a folder, or is null when the level has more than 20 folders and it is not looked up
 
 ```sh
 ydisk folders browse [options]
@@ -154,7 +178,7 @@ ydisk folders browse [options]
 | Option | What it does |
 |---|---|
 | `--folder <folder>` | the Disk folder to list inside, by its path; the top of the Disk without it. |
-| `--cursor <cursor>` | go on from where the last page stopped; page.next gives it, with the same --folder. |
+| `--cursor <cursor>` | go on from where the last page stopped; page.next_cursor gives it, with the same --folder. |
 
 **Next usually:** `ydisk folders add <folder>`
 
@@ -963,7 +987,7 @@ ydisk files list [options]
 | Option | What it does |
 |---|---|
 | `--folder <folder>` | the Disk folder to list, by its path; the top of the Disk without it. |
-| `--cursor <cursor>` | go on from where the last page stopped; page.next gives it, with the same --folder. |
+| `--cursor <cursor>` | go on from where the last page stopped; page.next_cursor gives it, with the same --folder. |
 
 **Next usually:** `ydisk files show <path>`, `ydisk files download <path>`
 
@@ -1152,6 +1176,22 @@ ydisk files unpublish <path>
 | `path` | required | Disk path, like /Documents/plan.pdf or disk:/Documents/plan.pdf. |
 
 **Example:** `ydisk personal files unpublish /Documents/plan.pdf`
+
+## `ydisk store`
+
+the shared local store every WireCat tool reads
+
+### `ydisk store info`
+
+the store file: where it is, its size, its schema against the one this tool speaks, which tools used it and how many rows it holds, by provider, chat kind, account, year (UTC) and attachment kind, over every account; changes nothing
+
+```sh
+ydisk store info
+```
+
+**Returns:** store info — path, exists, schema, opens, error, bytes, journal_mode, pages, and 12 more; every field: ydisk commands info store info
+
+**Example:** `ydisk personal store info --json`
 
 ## `ydisk api`
 

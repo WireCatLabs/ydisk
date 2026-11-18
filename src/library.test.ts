@@ -1,17 +1,18 @@
-import { mkdtempSync } from "node:fs"
+import { existsSync, mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { CliError, isCliError } from "@wirecat/cli-base"
-import { linkFetch } from "@wirecat/cli-core/cli"
+import { CliError, isCliError, memoryKeyring } from "@wirecat/cli-base"
+import { linkFetch, ProfileTokenStore } from "@wirecat/cli-core/cli"
 import { type FeedlessDocumentSource, syncDocuments } from "@wirecat/cli-core/documents"
 import { documentProfile } from "@wirecat/cli-core/documents/cli"
 import { documentCommandsContract, documentSourceContract } from "@wirecat/cli-core/documents/testing"
 import { afterEach, describe, expect, it } from "vitest"
 import { libraryCommands } from "./commands/library.js"
+import { PACE } from "./context.js"
 import { IDENTITY } from "./identity.js"
 import { createProgram } from "./program.js"
 import { FAKE_TOKEN, type FakeDisk, fakeDisk } from "./testing/fake-disk.js"
-import { runCli } from "./testing/harness.js"
+import { runCli, signedIn } from "./testing/harness.js"
 import { type DiskFile, diskSource, isFolder, skipReason } from "./yandex/source.js"
 import { transport } from "./yandex/transport.js"
 
@@ -208,5 +209,128 @@ describe("Disk times", () => {
     const utc = "2026-01-02T00:00:00.000Z"
     expect(await timesIn("Asia/Vladivostok")).toEqual({ stored: utc, live: utc })
     expect(await timesIn("America/Los_Angeles")).toEqual({ stored: utc, live: utc })
+  })
+})
+
+describe("folders browse", () => {
+  const browse = async (...argv: string[]) => {
+    const disk = tree()
+    disk.put("disk:/Work/Deep/Inner/old.txt", "two folders down")
+    const answer = await runCli(["personal", "folders", "browse", ...argv, "--json"], { service: disk, env: sandbox() })
+    expect(answer.code, answer.err).toBe(0)
+    return answer.json().items as Record<string, unknown>[]
+  }
+
+  it("names each folder's kind and tells one that holds a folder from one that holds only files", async () => {
+    const items = await browse("--folder", "/Work")
+    expect(items.map((item) => item.name)).toEqual(["Deep", "Notes"])
+    for (const item of items) expect(item).toMatchObject({ kind: "folder", added: false })
+    expect(Object.fromEntries(items.map((item) => [item.name, item.has_children]))).toEqual({
+      Deep: true,
+      Notes: false,
+    })
+  })
+
+  it("leaves has_children null for a folder it cannot list, and keeps the others", async () => {
+    const disk = tree()
+    disk.put("disk:/Work/Deep/Inner/old.txt", "two folders down")
+    disk.put("disk:/Work/Locked/x.txt", "x")
+    disk.deny("disk:/Work/Locked", 403)
+    const answer = await runCli(["personal", "folders", "browse", "--folder", "/Work", "--json"], { service: disk })
+    expect(answer.code, answer.err).toBe(0)
+    const items = answer.json().items as { name: string; has_children: boolean | null }[]
+    expect(Object.fromEntries(items.map((item) => [item.name, item.has_children]))).toEqual({
+      Deep: true,
+      Locked: null,
+      Notes: false,
+    })
+  })
+
+  it("leaves has_children null, and asks for no listing inside, on a level with more folders than the burst", async () => {
+    const disk = tree()
+    for (let n = 0; n <= PACE.burst; n++) disk.put(`disk:/Many/f${String(n).padStart(2, "0")}/x.txt`, "x")
+    const answer = await runCli(["personal", "folders", "browse", "--folder", "/Many", "--json"], { service: disk })
+    const items = answer.json().items as { has_children: boolean | null }[]
+    expect(items).toHaveLength(PACE.burst + 1)
+    for (const item of items) expect(item.has_children).toBeNull()
+    expect(disk.calls.filter((call) => call.url.searchParams.get("path")?.startsWith("disk:/Many/f"))).toEqual([])
+  })
+
+  it("says page.next_cursor, the key the answer has, in its help and its refusal", async () => {
+    const help = await runCli(["personal", "folders", "browse", "--help"])
+    expect(help.out).toContain("page.next_cursor")
+    const bad = await runCli(["personal", "folders", "browse", "--cursor", "x", "--json"], { service: tree() })
+    expect(JSON.stringify(bad.json())).toContain("page.next_cursor")
+  })
+})
+
+describe("store info", () => {
+  it("reads the shared store without a sign-in and changes nothing", async () => {
+    const env = sandbox()
+    const answer = await runCli(["store", "info", "--json"], { env, keyring: memoryKeyring() })
+    expect(answer.code, answer.err).toBe(0)
+    expect(answer.json().item).toMatchObject({ path: env.MESSAGING_STORE, exists: false })
+    expect(existsSync(env.MESSAGING_STORE)).toBe(false)
+  })
+})
+
+describe("account remove", () => {
+  it("asks which way the data goes, and removes nothing until it is told", async () => {
+    const keyring = signedIn()
+    const env = sandbox()
+    await runCli(["personal", "session", "start", "--json"], { env, keyring, stdin: FAKE_TOKEN })
+    const answer = await runCli(["personal", "account", "remove", "--yes", "--json"], { keyring, env })
+    expect(answer.code).not.toBe(0)
+    expect(new ProfileTokenStore({ app: IDENTITY, keyring }).read("personal")).toBeDefined()
+  })
+
+  it("--dry-run lists what it would remove and removes nothing", async () => {
+    const env = sandbox()
+    const keyring = signedIn()
+    await runCli(["personal", "session", "start", "--json"], { env, keyring, stdin: FAKE_TOKEN })
+    const answer = await runCli(["personal", "account", "remove", "--keep-data", "--dry-run", "--json"], {
+      keyring,
+      env,
+    })
+    expect(answer.code, answer.err).toBe(0)
+    expect(new ProfileTokenStore({ app: IDENTITY, keyring }).read("personal")).toBeDefined()
+  })
+
+  it("--keep-data signs the profile out and leaves the chosen folders", async () => {
+    const disk = tree()
+    const env = sandbox()
+    const keyring = signedIn()
+    await runCli(["personal", "session", "start", "--json"], { service: disk, env, keyring, stdin: FAKE_TOKEN })
+    await runCli(["personal", "folders", "add", "/Work", "--json"], { service: disk, env, keyring })
+    const answer = await runCli(["personal", "account", "remove", "--keep-data", "--yes", "--json"], {
+      keyring,
+      env,
+    })
+    expect(answer.code, answer.err).toBe(0)
+    expect(new ProfileTokenStore({ app: IDENTITY, keyring }).read("personal")).toBeUndefined()
+    expect(documentProfile(IDENTITY, { ...process.env, ...env }, "personal").folders().roots).toHaveLength(1)
+  })
+
+  it("--delete-data also removes the chosen folders and the synced files", async () => {
+    const disk = tree()
+    const env = sandbox()
+    const keyring = signedIn()
+    await runCli(["personal", "session", "start", "--json"], { service: disk, env, keyring, stdin: FAKE_TOKEN })
+    await runCli(["personal", "folders", "add", "/Work", "--json"], { service: disk, env, keyring })
+    await runCli(["personal", "sync", "--json"], { service: disk, env, keyring })
+    const rows = async () => {
+      const info = (await runCli(["store", "info", "--json"], { env, keyring })).json().item as {
+        rows: Record<string, number>
+      }
+      return info.rows.documents ?? 0
+    }
+    expect(await rows()).toBeGreaterThan(0)
+    const answer = await runCli(["personal", "account", "remove", "--delete-data", "--yes", "--json"], {
+      keyring,
+      env,
+    })
+    expect(answer.code, answer.err).toBe(0)
+    expect(documentProfile(IDENTITY, { ...process.env, ...env }, "personal").folders().roots).toEqual([])
+    expect(await rows()).toBe(0)
   })
 })

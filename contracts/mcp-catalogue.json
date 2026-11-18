@@ -13,6 +13,7 @@
   "files restore": "write",
   "files publish": "write",
   "files unpublish": "write",
+  "store info": "read",
   "api disk-get": "read",
   "api resources-list": "read",
   "api resources-create": "write",
