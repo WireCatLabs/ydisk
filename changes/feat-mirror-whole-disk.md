@@ -20,4 +20,4 @@
   asked for it by its path after the listing, has nothing there. The listing is no longer read up to three times
   while the Disk changes, so a phone uploading photos no longer blocks every deletion.
 - **The home folder is never mirrored**, even when the CLI's own folders are moved out of it.
-- Requires `@wirecat/cli-core` with the mirror guard and exclusions.
+- Requires `@wirecat/cli-core` 0.711.0.
