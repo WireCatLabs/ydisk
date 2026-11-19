@@ -62,7 +62,7 @@ the commands. Settled on 2026-11-18 by live probes, asserted by `scripts/live.sh
   live). A new file asks with `overwrite=false`, and the Disk refuses one created meanwhile (409).
 - **Trash passes the expected md5**: `DELETE ?permanently=false&md5=`, which the Disk refuses with 409 when the
   file changed. Deletions cross sides into both trashes, with the engine's guard: more than 10 deletions needs
-  `--allow-deletions N`, more than 50 replacements of existing files `--allow-replacements N`, however big the
+  `--allow-deletions N`, more than 50 replacements of existing files `--replace`, however big the
   mirror (owner, 2026-11-19: many deletions are always agreed first). Both flags are owner-only and need the
   mirror's id when the profile has more than one mirror.
 - **Renames:** a Disk-side move is found by `resource_id` (kept across a move, checked live) and applied locally. A
@@ -76,7 +76,7 @@ the commands. Settled on 2026-11-18 by live probes, asserted by `scripts/live.sh
   deleted. The listing is not walked again when the Disk's revision moves: a phone uploading photos would keep a
   whole Disk from ever standing still. Instead the engine asks for each file missing from the listing by its path
   (`exists`), after the listing, and deletes only what that read does not find.
-- **Exclusions** (`--exclude`, `mirrors exclude|include`) are globs kept on the pair in `mirrors.json`. An excluded
+- **Exclusions** (`--ignore`, `mirrors update --ignore|--clear`, stored as `exclude`) are globs kept on the pair in `mirrors.json`. An excluded
   path is absent by filter, never deleted; adding one trashes nothing, removing one is a first sync for those paths.
 - **The local root** is never the home folder or a folder holding it, whatever folders the CLI uses, so a whole-Disk
   mirror goes into a folder of its own.

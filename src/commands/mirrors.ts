@@ -189,8 +189,8 @@ const hintsOf = (profile: string) => ({
   repin: `\`${CLI} ${profile} mirrors sync <id> --repin\``,
   sync: `${CLI} ${profile} mirrors sync <id>`,
   allowDeletions: "--allow-deletions <count>",
-  allowReplacements: "--allow-replacements <count>",
-  exclude: `${CLI} ${profile} mirrors exclude <id> <glob>`,
+  allowReplacements: "--replace",
+  exclude: `${CLI} ${profile} mirrors update <id> --ignore <path>`,
 })
 /** The engine's refusals of a whole run, which a sync ends with instead of the generic partial one. */
 const STOPS = new Set(["mirror.too-many-deletions", "mirror.too-many-replacements", "mirror.no-space"])
@@ -234,7 +234,7 @@ const addCommand = () =>
     mcp: false,
     examples: [
       `${CLI} personal mirrors add /Notes ./notes`,
-      `${CLI} personal mirrors add / ~/YandexDisk --exclude Photos --exclude "*.iso"`,
+      `${CLI} personal mirrors add / ~/YandexDisk --ignore Photos --ignore "*.iso"`,
     ],
   })
     .summary("mirror a local folder and a Disk folder both ways")
@@ -244,13 +244,8 @@ const addCommand = () =>
     )
     .argument("<folder>", "the Disk folder, by its path, like /Notes, or / for the whole Disk")
     .argument("<path>", "the local folder")
-    .option(
-      "--exclude <glob>",
-      "leave this path out on both sides, repeatable: a name at any depth (node_modules, *.iso) or a path from the " +
-        "mirror's root (/Photos)",
-      collect,
-    )
-    .action(async function (this: Command, folder: string, path: string, args: { exclude?: string[] }) {
+    .addOption(ignoreOption())
+    .action(async function (this: Command, folder: string, path: string, args: { ignore?: string[] }) {
       const root = resolve(path)
       let directory = false
       try {
@@ -259,7 +254,7 @@ const addCommand = () =>
       if (!directory)
         throw new CliError("validation_error", "the local path is not a folder", { reason: "mirror.not-folder" })
       refuseSensitive(root, contextOf(this).env)
-      const exclude = [...new Set((args.exclude ?? []).map(exclusionPattern))]
+      const exclude = [...new Set((args.ignore ?? []).map(exclusionPattern))]
       const home = mirrorsHome(this)
       const found = await withDisk(this, async (disk) => {
         const remote = await disk.byPath(diskPath(folder))
@@ -295,49 +290,56 @@ const addCommand = () =>
         await home.save(list)
       }
       const saved = home.find(id)
-      output(this, itemOf({ id, path: root, folder: mirror.folder, exclude: saved.exclude ?? [], added }))
+      output(this, itemOf({ id, path: root, folder: mirror.folder, ignore: saved.exclude ?? [], added }))
     })
 
-/** Changes a mirror's exclusions under the sync lock, so no running sync reads half of them. */
-const exclusionsCommand = (name: "exclude" | "include") =>
-  annotate(new Command(name), {
+const ignoreOption = () =>
+  new Option(
+    "--ignore <path>",
+    "leave this path out on both sides, a path or a glob; repeat it for more: a name at any depth (node_modules, " +
+      "*.iso) or a path from the mirror's root (/Photos)",
+  ).argParser(collect)
+
+/** Sets what a mirror ignores under the sync lock, so no running sync reads half of it. */
+const updateCommand = () =>
+  annotate(new Command("update"), {
     effects: LOCAL_WRITE,
     mcp: false,
-    examples: [`${CLI} personal mirrors ${name} 1a2b3c4d Photos "*.iso"`],
+    examples: [
+      `${CLI} personal mirrors update 1a2b3c4d --ignore Photos --ignore "*.iso"`,
+      `${CLI} personal mirrors update 1a2b3c4d --clear`,
+    ],
   })
-    .summary(
-      name === "exclude"
-        ? "leave paths out of a mirror on both sides; nothing is deleted"
-        : "stop leaving paths out of a mirror; the next sync copies them, deleting nothing",
-    )
+    .summary("set which paths a mirror ignores; nothing is deleted on either side")
     .description(
-      name === "exclude"
-        ? "leave paths out of a mirror on both sides: a name at any depth (node_modules, *.iso) or a path from the " +
-            "mirror's root (/Photos). Nothing is deleted on either side, now or later"
-        : "stop leaving paths out of a mirror: the next sync takes them as a new folder, copying one-sided files " +
-            "and reporting different ones as conflicts; it deletes nothing",
+      "set which paths a mirror ignores: the --ignore paths given replace the list mirrors list shows. An ignored " +
+        "path is left alone on both sides and never deleted, now or later; one no longer ignored is synced as a new " +
+        "folder, copying one-sided files and reporting different ones as conflicts, deleting nothing",
     )
     .argument("<id>", ID)
-    .argument("<glob...>", "the patterns, as mirrors list shows them")
-    .action(async function (this: Command, id: string, globs: string[]) {
+    .addOption(ignoreOption())
+    .addOption(new Option("--clear", "ignore nothing: sync every path again"))
+    .action(async function (this: Command, id: string, args: { ignore?: string[]; clear?: boolean }) {
       const home = mirrorsHome(this)
       home.find(id)
-      const patterns = globs.map(exclusionPattern)
-      const held = await home.lock()
-      let exclude: string[] = []
-      try {
-        const list = home.mirrors().map((one) => {
-          if (one.id !== id) return one
-          const kept = (one.exclude ?? []).filter((pattern) => !patterns.includes(pattern))
-          exclude = name === "exclude" ? [...kept, ...patterns] : kept
-          const { exclude: _, ...rest } = one
-          return exclude.length ? { ...rest, exclude } : rest
+      if (!args.ignore?.length === !args.clear)
+        throw new CliError("validation_error", "give the paths to ignore with --ignore, or --clear to ignore none", {
+          param: "--ignore",
         })
-        await home.save(list)
+      const exclude = [...new Set((args.ignore ?? []).map(exclusionPattern))]
+      const held = await home.lock()
+      try {
+        await home.save(
+          home.mirrors().map((one) => {
+            if (one.id !== id) return one
+            const { exclude: _, ...rest } = one
+            return exclude.length ? { ...rest, exclude } : rest
+          }),
+        )
       } finally {
         await held.release()
       }
-      output(this, itemOf({ id, exclude }))
+      output(this, itemOf({ id, ignore: exclude }))
     })
 
 const listCommand = () =>
@@ -353,7 +355,7 @@ const listCommand = () =>
           "mirrors list",
           mirrorsHome(this)
             .mirrors()
-            .map(({ id, path, folder, exclude }) => ({ id, path, folder, exclude: exclude ?? [] })),
+            .map(({ id, path, folder, exclude }) => ({ id, path, folder, ignore: exclude ?? [] })),
         ),
       )
     })
@@ -468,8 +470,8 @@ const syncCommand = () =>
     )
     .addOption(
       ownerOnlyOption(
-        "--allow-replacements <count>",
-        "let this run replace up to this many existing files when the guard stops it",
+        "--replace",
+        "let this run overwrite more than 50 existing files when the guard stops it; each is kept as a version first",
       ),
     )
     .addOption(
@@ -481,20 +483,14 @@ const syncCommand = () =>
       args: {
         keep?: "local" | "disk" | "both"
         allowDeletions?: string
-        allowReplacements?: string
+        replace?: boolean
         repin?: boolean
       },
     ) {
       const home = mirrorsHome(this)
       const chosen = home.chosen(id)
-      const count = (value: string | undefined, flag: string, what: string) => {
-        if (value === undefined) return undefined
-        const number = Number(value)
-        if (!Number.isSafeInteger(number) || number < 1)
-          throw new CliError("validation_error", `${flag} takes the number of files the run may ${what}`, {
-            param: flag,
-          })
-        // An approval is for the files one mirror's preview showed, never for every mirror at once.
+      // An approval is for the files one mirror's preview showed, never for every mirror at once.
+      const oneMirror = (flag: string) => {
         if (chosen.length > 1)
           throw new CliError(
             "validation_error",
@@ -503,10 +499,17 @@ const syncCommand = () =>
               param: flag,
             },
           )
-        return number
       }
-      const allowDeletions = count(args.allowDeletions, "--allow-deletions", "delete")
-      const allowReplacements = count(args.allowReplacements, "--allow-replacements", "replace")
+      const allowDeletions = args.allowDeletions === undefined ? undefined : Number(args.allowDeletions)
+      if (allowDeletions !== undefined) {
+        if (!Number.isSafeInteger(allowDeletions) || allowDeletions < 1)
+          throw new CliError("validation_error", "--allow-deletions takes the number of files the run may delete", {
+            param: "--allow-deletions",
+          })
+        oneMirror("--allow-deletions")
+      }
+      if (args.replace) oneMirror("--replace")
+      const allowReplacements = args.replace ? Number.POSITIVE_INFINITY : undefined
       const keep = keepOf(args.keep)
       const token = tokenOf(this)
       const { items, issues } = await contextOf(this).run((events) =>
@@ -716,7 +719,6 @@ export const mirrorsCommand = (): Command =>
     .addCommand(previewCommand())
     .addCommand(syncCommand())
     .addCommand(watchCommand())
-    .addCommand(exclusionsCommand("exclude"))
-    .addCommand(exclusionsCommand("include"))
+    .addCommand(updateCommand())
     .addCommand(removeCommand())
     .addCommand(versionsCommand())

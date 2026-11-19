@@ -51,7 +51,7 @@ is refused.
 Name `/` as the Disk folder, and a folder of its own on your computer:
 
 ```sh
-ydisk personal mirrors add / ~/YandexDisk --exclude Photos --exclude "*.iso"
+ydisk personal mirrors add / ~/YandexDisk --ignore Photos --ignore "*.iso"
 ydisk personal mirrors preview
 ydisk personal mirrors sync
 ```
@@ -67,12 +67,12 @@ works like any other mirror: everything on this page holds for it. Two things ma
 
 ## Leave folders out
 
-An excluded path is left alone on both sides: it is not sent, not brought down and never deleted. Give exclusions
-when you add the mirror (`--exclude`, repeated), or change them later:
+An ignored path is left alone on both sides: it is not sent, not brought down and never deleted. Give the paths
+when you add the mirror (`--ignore`, repeated), or set the whole list again later. `mirrors list` shows it:
 
 ```sh
-ydisk personal mirrors exclude 1a2b3c4d Photos "*.iso"
-ydisk personal mirrors include 1a2b3c4d Photos
+ydisk personal mirrors update 1a2b3c4d --ignore Photos --ignore "*.iso"
+ydisk personal mirrors update 1a2b3c4d --clear
 ```
 
 - A pattern without `/` is a name at any depth: `node_modules`, `*.iso`, `Backups`.
@@ -165,11 +165,12 @@ list first:
 
 ```sh
 ydisk personal mirrors preview 1a2b3c4d
-ydisk personal mirrors sync 1a2b3c4d --allow-deletions 40 --allow-replacements 120
+ydisk personal mirrors sync 1a2b3c4d --allow-deletions 40 --replace
 ```
 
-An allowed number covers that one run. With more than one mirror, `--allow-deletions` and `--allow-replacements` need
-the mirror's id, so an approval never covers another mirror. A stopped mirror does not hold up the others: they sync
+`--allow-deletions` allows up to that many deletions, `--replace` any number of replacements, for that one run. Each
+replaced file is kept as a version first. With more than one mirror, both need the mirror's id, so an approval never
+covers another mirror. A stopped mirror does not hold up the others: they sync
 as usual. `mirrors watch` reports the stop again at every cycle that syncs the mirror, until you allow the run or put
 the files back.
 
@@ -243,10 +244,9 @@ With `files.delete` set to `deny`, a sync still sends and brings down new files,
 it skipped under `errors`. `YDISK_READ_ONLY=1` refuses a sync; `mirrors preview` and `mirrors status` still work.
 
 Over MCP an agent may run `mirrors list`, `mirrors status`, `mirrors preview` and `mirrors sync`, but not
-`--allow-deletions`, `--allow-replacements` or `--repin`: only you approve many changes at once. Over MCP nobody can
+`--allow-deletions`, `--replace` or `--repin`: only you approve many changes at once. Over MCP nobody can
 answer a question, so a level at `ask` lets the write through: set `files.delete` to `deny` for an agent that should
-not replace or delete files. Adding or removing a mirror, `exclude`, `include`, `versions` and `watch` are for you
-only. See [connect your agent](mcp.md#decide-what-the-agent-may-change).
+not replace or delete files. Adding, changing or removing a mirror, `versions` and `watch` are for you only. See [connect your agent](mcp.md#decide-what-the-agent-may-change).
 
 ## What is not synced
 

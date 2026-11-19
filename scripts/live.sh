@@ -138,7 +138,7 @@ echo "excluded there $stamp" >"$work/d.txt"
 # A failed run leaves no mirror folder behind: it goes to the trash like the rest.
 trap '"${cli[@]}" live files delete "$mirror" --yes --json >/dev/null 2>&1 || true
   "${cli[@]}" live session end --json >/dev/null 2>&1 || true; rm -rf "$work"' EXIT
-"${cli[@]}" live mirrors add "$mirror" "$work/mirror" --exclude skip --json >"$work/m-add.json"
+"${cli[@]}" live mirrors add "$mirror" "$work/mirror" --ignore skip --json >"$work/m-add.json"
 id=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).item.id)' "$work/m-add.json")
 "${cli[@]}" live mirrors sync "$id" --json >"$work/m-up.json"
 echo "edited on the disk $stamp" >"$work/edit.txt"

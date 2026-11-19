@@ -130,16 +130,17 @@ it("over MCP an agent can neither approve many changes nor change a mirror's exc
   const options: RunOptions & ServiceEnvironment = { tty: false, keyring: signedIn(), fetch: service.fetch }
   const mcp = await mcpOverStdio((streams) => run(["personal", "mcp", "serve"], { ...options, ...streams }))
   try {
-    for (const flag of ["allow-deletions", "allow-replacements"]) {
-      const approved = await mcp.call("ydisk_write", { command: "mirrors sync", arguments: { id: "x", [flag]: "99" } })
+    for (const [flag, value] of [
+      ["allow-deletions", "99"],
+      ["replace", true],
+    ] as const) {
+      const approved = await mcp.call("ydisk_write", { command: "mirrors sync", arguments: { id: "x", [flag]: value } })
       expect(approved.isError, flag).toBe(true)
       expect(JSON.stringify(approved.body), flag).toContain(`Invalid key: Expected never but received \\"${flag}\\"`)
     }
-    for (const command of ["mirrors exclude", "mirrors include"]) {
-      const changed = await mcp.call("ydisk_write", { command, arguments: { id: "x", glob: ["Photos"] } })
-      expect(changed.isError, command).toBe(true)
-      expect(JSON.stringify(changed.body), command).toContain(`no command \\"${command}\\" here`)
-    }
+    const changed = await mcp.call("ydisk_write", { command: "mirrors update", arguments: { id: "x", ignore: ["P"] } })
+    expect(changed.isError).toBe(true)
+    expect(JSON.stringify(changed.body)).toContain('no command \\"mirrors update\\" here')
     expect(service.calls).toEqual([])
   } finally {
     expect(await mcp.close()).toBe(0)

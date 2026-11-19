@@ -72,7 +72,7 @@ it("adds a mirror for a Disk folder, and refuses a local path that is not a fold
   const again = await cli(["add", "disk:/Notes", root])
   expect(again.json().item).toMatchObject({ added: false })
   expect((await cli(["list"])).json().items).toEqual([
-    { id: expect.any(String), path: root, folder: "disk:/Notes", exclude: [] },
+    { id: expect.any(String), path: root, folder: "disk:/Notes", ignore: [] },
   ])
   writeFileSync(join(dir, "file.txt"), "x")
   const refused = await cli(["add", "/Notes", join(dir, "file.txt")])
@@ -398,7 +398,7 @@ it("stops a run that would delete more than 10 files until --allow-deletions cov
   expect(disk.trash.size).toBe(11)
 })
 
-it("stops a run that would replace more than 50 files until --allow-replacements covers them", async () => {
+it("stops a run that would replace more than 50 files until --replace allows them", async () => {
   const files = Object.fromEntries(Array.from({ length: 51 }, (_, n) => [`f${n}.txt`, String(n)]))
   const { cli, root, disk, permit } = setup(files, files)
   const id = await added(cli, root)
@@ -409,13 +409,13 @@ it("stops a run that would replace more than 50 files until --allow-replacements
     error: {
       code: "confirmation_required",
       reason: "mirror.too-many-replacements",
-      message: expect.stringContaining(`\`ydisk personal mirrors sync ${id} --allow-replacements 51\``),
+      message: expect.stringContaining(`\`ydisk personal mirrors sync ${id} --replace\``),
     },
   })
   expect(read(root, "f0.txt")).toBe("0")
   // Past the guard, each replacement still checks files.delete; denied here, so the test makes no 51 downloads.
   permit({ "files.delete": "deny" })
-  const allowed = await synced(cli, id, "--allow-replacements", "51")
+  const allowed = await synced(cli, id, "--replace")
   expect(allowed.result.errors).toHaveLength(51)
   expect(allowed.result.errors.every((error) => error.path !== ".")).toBe(true)
   expect(read(root, "f0.txt")).toBe("0")
@@ -427,9 +427,9 @@ it("an allow flag needs the mirror's id when the profile has more than one mirro
   const other = join(dir, "other")
   mkdirSync(other)
   expect((await cli(["add", "/Notes", other])).code).toBe(0)
-  for (const flag of ["--allow-deletions", "--allow-replacements"]) {
-    const refused = await synced(cli, flag, "20")
-    expect(refused.json()).toMatchObject({ error: { code: "validation_error", param: flag } })
+  for (const flag of [["--allow-deletions", "20"], ["--replace"]]) {
+    const refused = await synced(cli, ...flag)
+    expect(refused.json()).toMatchObject({ error: { code: "validation_error", param: flag[0] } })
   }
 })
 
@@ -473,8 +473,8 @@ it("mirrors the whole Disk into a folder of its own, leaving excluded paths alon
   const root = join(dir, "YandexDisk")
   mkdirSync(root)
   write(root, "Photos/local.jpg", "mine")
-  const add = await cli(["add", "/", root, "--exclude", "Photos", "--exclude", "*.iso"])
-  expect(add.json().item).toMatchObject({ folder: "disk:/", exclude: ["Photos", "*.iso"], added: true })
+  const add = await cli(["add", "/", root, "--ignore", "Photos", "--ignore", "*.iso"])
+  expect(add.json().item).toMatchObject({ folder: "disk:/", ignore: ["Photos", "*.iso"], added: true })
   const id = (add.json().item as { id: string }).id
   const first = await synced(cli, id)
   expect(first.code, first.err).toBe(0)
@@ -484,8 +484,8 @@ it("mirrors the whole Disk into a folder of its own, leaving excluded paths alon
   expect(existsSync(join(root, "Docs/big.iso"))).toBe(false)
   expect(disk.calls.some((call) => call.url.pathname === "/v1/disk/resources/files")).toBe(true)
 
-  const excluded = await cli(["exclude", id, "Notes"])
-  expect(excluded.json().item).toEqual({ id, exclude: ["Photos", "*.iso", "Notes"] })
+  const ignored = await cli(["update", id, "--ignore", "Photos", "--ignore", "*.iso", "--ignore", "Notes"])
+  expect(ignored.json().item).toEqual({ id, ignore: ["Photos", "*.iso", "Notes"] })
   rmSync(join(root, "Notes"), { recursive: true })
   disk.remove("disk:/Docs/report.txt")
   const after = await synced(cli, id)
@@ -493,13 +493,15 @@ it("mirrors the whole Disk into a folder of its own, leaving excluded paths alon
   expect(disk.trash.size).toBe(0)
   expect(text(disk, "plan.md")).toBe("p")
 
-  const included = await cli(["include", id, "Notes"])
-  expect(included.json().item).toEqual({ id, exclude: ["Photos", "*.iso"] })
+  const included = await cli(["update", id, "--ignore", "Photos", "--ignore", "*.iso"])
+  expect(included.json().item).toEqual({ id, ignore: ["Photos", "*.iso"] })
   const back = await synced(cli, id)
   expect(back.result).toMatchObject({ downloaded: ["Notes/plan.md"], trashed: [] })
   expect((await cli(["list"])).json().items).toEqual([
-    { id, path: root, folder: "disk:/", exclude: ["Photos", "*.iso"] },
+    { id, path: root, folder: "disk:/", ignore: ["Photos", "*.iso"] },
   ])
+  expect((await cli(["update", id])).json()).toMatchObject({ error: { code: "validation_error", param: "--ignore" } })
+  expect((await cli(["update", id, "--clear"])).json().item).toEqual({ id, ignore: [] })
 })
 
 it("add refuses the home folder, the file system's root and a pattern that leaves the mirror", async () => {
@@ -510,7 +512,7 @@ it("add refuses the home folder, the file system's root and a pattern that leave
     const refused = await cli(["add", "/", path], { env: { HOME: home } })
     expect(refused.json(), path).toMatchObject({ error: { code: "validation_error", reason: "mirror.not-folder" } })
   }
-  const bad = await cli(["add", "/", join(home, "Disk"), "--exclude", "../x"], { env: { HOME: home } })
+  const bad = await cli(["add", "/", join(home, "Disk"), "--ignore", "../x"], { env: { HOME: home } })
   expect(bad.json()).toMatchObject({ error: { code: "validation_error", reason: "mirror.bad-exclusion" } })
   expect(disk.calls).toEqual([])
 })
