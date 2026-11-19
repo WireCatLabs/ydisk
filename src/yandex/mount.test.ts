@@ -21,7 +21,8 @@ const setup = (links: (href: string, headers: Headers) => Response, folderSize =
     send: async (request) => {
       sent.push(request)
       const path = String(request.query?.path)
-      if (request.path === "disk/resources/download") return { href: `https://downloader.disk.yandex.ru/${++issued}` }
+      if (request.path === "disk/resources/download")
+        return { href: `https://downloader.disk.yandex.ru/${++issued}` } as never
       if (path === "disk:/Work/plan.txt") return file(path) as never
       const offset = Number(request.query?.offset ?? 0)
       const count = Math.max(0, Math.min(PAGE, folderSize - offset))
