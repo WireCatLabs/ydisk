@@ -61,14 +61,25 @@ the commands. Settled on 2026-11-18 by live probes, asserted by `scripts/live.sh
   is lost; in exchange the file keeps its `resource_id`, so tags and notes stay (an overwrite keeps the id, checked
   live). A new file asks with `overwrite=false`, and the Disk refuses one created meanwhile (409).
 - **Trash passes the expected md5**: `DELETE ?permanently=false&md5=`, which the Disk refuses with 409 when the
-  file changed. Deletions cross sides into both trashes, with the engine's guard (more than 2 files, and over 50 or
-  over a quarter of the mirror, needs `--allow-deletions N`).
+  file changed. Deletions cross sides into both trashes, with the engine's guard: more than 10 deletions needs
+  `--allow-deletions N`, more than 50 replacements of existing files `--allow-replacements N`, however big the
+  mirror (owner, 2026-11-19: many deletions are always agreed first). Both flags are owner-only and need the
+  mirror's id when the profile has more than one mirror.
 - **Renames:** a Disk-side move is found by `resource_id` (kept across a move, checked live) and applied locally. A
   local rename is a deletion and a new file.
 - **Watch** polls `GET /v1/disk?fields=revision`, which moves with every write, and lists only when it moved.
 - **The listing** walks the folder 200 entries a page without a `fields` filter (one mistyped field would drop
-  `sha256` on the real Disk while the fake still sent it). A folder that fails to list, more than 10,000 files, or a
-  Disk revision that moves during three walks makes the listing incomplete, so no file is taken as deleted.
+  `sha256` on the real Disk while the fake still sent it). A mirror of the whole Disk (`/`) reads the flat list
+  (`GET /v1/disk/resources/files`, alphabetical, `limit` and `offset`, no total and no documented largest page): 1,000
+  a page, the offset moved by what each page returned, ended by an empty page, a file met twice kept once. A folder or
+  page that fails, or more than 100,000 files not excluded, makes the listing incomplete, so no file is taken as
+  deleted. The listing is not walked again when the Disk's revision moves: a phone uploading photos would keep a
+  whole Disk from ever standing still. Instead the engine asks for each file missing from the listing by its path
+  (`exists`), after the listing, and deletes only what that read does not find.
+- **Exclusions** (`--exclude`, `mirrors exclude|include`) are globs kept on the pair in `mirrors.json`. An excluded
+  path is absent by filter, never deleted; adding one trashes nothing, removing one is a first sync for those paths.
+- **The local root** is never the home folder or a folder holding it, whatever folders the CLI uses, so a whole-Disk
+  mirror goes into a folder of its own.
 - **Storage:** `profiles/<profile>/mirrors.json` (the pairs with the account), `mirrors/<id>.json` (the engine's
   state; `add` pins the Disk folder's `resource_id`), `mirrors/<id>.versions/` (kept versions, local and the Disk's) and
   `mirrors/sync.lock`, one lock for sync, watch, restore and remove. `remove` deletes the state, so a pair added

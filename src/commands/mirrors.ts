@@ -1,4 +1,5 @@
 import { readFileSync, realpathSync, rmSync, statSync } from "node:fs"
+import { homedir } from "node:os"
 import { isAbsolute, join, relative, resolve, sep } from "node:path"
 import { CliError, isCliError, resolvePaths } from "@wirecat/cli-base"
 import { annotate } from "@wirecat/cli-base/commands"
@@ -20,6 +21,7 @@ import {
   terminalAsker,
 } from "@wirecat/cli-core/cli"
 import {
+  exclusionPattern,
   type FileMirrorSyncOptions,
   fileMirrorStatus,
   fileRemoteChanges,
@@ -46,7 +48,13 @@ const CLI = IDENTITY.command
 const REMOTE = "disk"
 
 /** A mirror with the account it was added for: a sync signed in to another account is refused. */
-const SavedMirror = v.strictObject({ id: v.string(), path: v.string(), folder: v.string(), account: v.string() })
+const SavedMirror = v.strictObject({
+  id: v.string(),
+  path: v.string(),
+  folder: v.string(),
+  account: v.string(),
+  exclude: v.optional(v.array(v.string())),
+})
 type SavedMirror = v.InferOutput<typeof SavedMirror>
 
 /** The profile's mirrors, their sync state, version stores and lock, under its state folder. */
@@ -160,7 +168,7 @@ const engineOf = (command: Command, disk: Disk, chosen: SavedMirror[]) => {
     operationId: newOperationId,
     errorOf,
     lock: home.lock,
-    hints: HINTS,
+    hints: hintsOf(home.profile),
     stateOf: (mirror: Mirror) => home.stateOf(mirror as SavedMirror),
     versionsOf: home.versionsOf,
     remote: REMOTE,
@@ -176,11 +184,16 @@ const allOf = <T>(command: string, items: T[]) =>
 
 const ID = "mirror id from mirrors list"
 
-const HINTS = {
-  preview: "`mirrors preview <id>`",
-  repin: "`mirrors sync <id> --repin`",
-  allowDeletions: "with `mirrors sync <id> --allow-deletions <count>`",
-}
+const hintsOf = (profile: string) => ({
+  preview: `${CLI} ${profile} mirrors preview <id>`,
+  repin: `\`${CLI} ${profile} mirrors sync <id> --repin\``,
+  sync: `${CLI} ${profile} mirrors sync <id>`,
+  allowDeletions: "--allow-deletions <count>",
+  allowReplacements: "--allow-replacements <count>",
+  exclude: `${CLI} ${profile} mirrors exclude <id> <glob>`,
+})
+/** The engine's refusals of a whole run, which a sync ends with instead of the generic partial one. */
+const STOPS = new Set(["mirror.too-many-deletions", "mirror.too-many-replacements", "mirror.no-space"])
 
 const realOf = (path: string) => {
   try {
@@ -198,34 +211,46 @@ const realOf = (path: string) => {
 const refuseSensitive = (root: string, env: NodeJS.ProcessEnv) => {
   const real = realOf(root)
   const own = Object.values(resolvePaths({ appName: IDENTITY.appName, prefix: IDENTITY.envPrefix, env })).map(realOf)
-  const holds = own.some((dir) => {
+  const holds = (dir: string) => {
     const way = relative(real, dir)
     return way === "" || (!way.startsWith("..") && !isAbsolute(way))
-  })
-  if (holds || refusedPlace(root, IDENTITY, env))
+  }
+  // The home folder, or one holding it, is never a mirror, even with the CLI's folders moved out of it.
+  if (own.some(holds) || holds(realOf(env.HOME ?? homedir())) || refusedPlace(root, IDENTITY, env))
     throw new CliError(
       "validation_error",
-      `${root} is not mirrored: credential folders, the WireCat apps' folders and a folder holding ${CLI}'s own ` +
-        "settings or state are never sent to the Disk",
+      `${root} is not mirrored: the home folder, credential folders, the WireCat apps' folders and a folder holding ` +
+        `${CLI}'s own settings or state are never sent to the Disk; mirror a folder of its own`,
       { reason: "mirror.not-folder" },
     )
 }
+
+const collect = (value: string, previous: string[] = []) => [...previous, value]
 
 const addCommand = () =>
   annotate(new Command("add"), {
     effects: FETCH,
     offline: false,
     mcp: false,
-    examples: [`${CLI} personal mirrors add /Notes ./notes`],
+    examples: [
+      `${CLI} personal mirrors add /Notes ./notes`,
+      `${CLI} personal mirrors add / ~/YandexDisk --exclude Photos --exclude "*.iso"`,
+    ],
   })
     .summary("mirror a local folder and a Disk folder both ways")
     .description(
       "mirror a local folder and a Disk folder both ways: checks the Disk folder and saves the pair; nothing is " +
-        "copied until mirrors sync",
+        "copied until mirrors sync. / mirrors the whole Disk into a folder of its own",
     )
-    .argument("<folder>", "the Disk folder, by its path, like /Notes")
+    .argument("<folder>", "the Disk folder, by its path, like /Notes, or / for the whole Disk")
     .argument("<path>", "the local folder")
-    .action(async function (this: Command, folder: string, path: string) {
+    .option(
+      "--exclude <glob>",
+      "leave this path out on both sides, repeatable: a name at any depth (node_modules, *.iso) or a path from the " +
+        "mirror's root (/Photos)",
+      collect,
+    )
+    .action(async function (this: Command, folder: string, path: string, args: { exclude?: string[] }) {
       const root = resolve(path)
       let directory = false
       try {
@@ -234,6 +259,7 @@ const addCommand = () =>
       if (!directory)
         throw new CliError("validation_error", "the local path is not a folder", { reason: "mirror.not-folder" })
       refuseSensitive(root, contextOf(this).env)
+      const exclude = [...new Set((args.exclude ?? []).map(exclusionPattern))]
       const home = mirrorsHome(this)
       const found = await withDisk(this, async (disk) => {
         const remote = await disk.byPath(diskPath(folder))
@@ -243,7 +269,12 @@ const addCommand = () =>
         throw new CliError("validation_error", `${folder} is a file on ${SERVICE}, not a folder`, {
           reason: "mirror.not-folder",
         })
-      const mirror = { path: root, folder: found.remote.providerMetadata.path, account: found.account }
+      const mirror = {
+        path: root,
+        folder: found.remote.providerMetadata.path,
+        account: found.account,
+        ...(exclude.length ? { exclude } : {}),
+      }
       const id = mirrorId(mirror.path, mirror.folder)
       const list = home.mirrors()
       const added = !list.some((one) => one.id === id)
@@ -263,7 +294,50 @@ const addCommand = () =>
         })
         await home.save(list)
       }
-      output(this, itemOf({ id, path: root, folder: mirror.folder, added }))
+      const saved = home.find(id)
+      output(this, itemOf({ id, path: root, folder: mirror.folder, exclude: saved.exclude ?? [], added }))
+    })
+
+/** Changes a mirror's exclusions under the sync lock, so no running sync reads half of them. */
+const exclusionsCommand = (name: "exclude" | "include") =>
+  annotate(new Command(name), {
+    effects: LOCAL_WRITE,
+    mcp: false,
+    examples: [`${CLI} personal mirrors ${name} 1a2b3c4d Photos "*.iso"`],
+  })
+    .summary(
+      name === "exclude"
+        ? "leave paths out of a mirror on both sides; nothing is deleted"
+        : "stop leaving paths out of a mirror; the next sync copies them, deleting nothing",
+    )
+    .description(
+      name === "exclude"
+        ? "leave paths out of a mirror on both sides: a name at any depth (node_modules, *.iso) or a path from the " +
+            "mirror's root (/Photos). Nothing is deleted on either side, now or later"
+        : "stop leaving paths out of a mirror: the next sync takes them as a new folder, copying one-sided files " +
+            "and reporting different ones as conflicts; it deletes nothing",
+    )
+    .argument("<id>", ID)
+    .argument("<glob...>", "the patterns, as mirrors list shows them")
+    .action(async function (this: Command, id: string, globs: string[]) {
+      const home = mirrorsHome(this)
+      home.find(id)
+      const patterns = globs.map(exclusionPattern)
+      const held = await home.lock()
+      let exclude: string[] = []
+      try {
+        const list = home.mirrors().map((one) => {
+          if (one.id !== id) return one
+          const kept = (one.exclude ?? []).filter((pattern) => !patterns.includes(pattern))
+          exclude = name === "exclude" ? [...kept, ...patterns] : kept
+          const { exclude: _, ...rest } = one
+          return exclude.length ? { ...rest, exclude } : rest
+        })
+        await home.save(list)
+      } finally {
+        await held.release()
+      }
+      output(this, itemOf({ id, exclude }))
     })
 
 const listCommand = () =>
@@ -279,7 +353,7 @@ const listCommand = () =>
           "mirrors list",
           mirrorsHome(this)
             .mirrors()
-            .map(({ id, path, folder }) => ({ id, path, folder })),
+            .map(({ id, path, folder, exclude }) => ({ id, path, folder, exclude: exclude ?? [] })),
         ),
       )
     })
@@ -393,20 +467,46 @@ const syncCommand = () =>
       ownerOnlyOption("--allow-deletions <count>", "let this run delete up to this many files when the guard stops it"),
     )
     .addOption(
+      ownerOnlyOption(
+        "--allow-replacements <count>",
+        "let this run replace up to this many existing files when the guard stops it",
+      ),
+    )
+    .addOption(
       ownerOnlyOption("--repin", "the Disk or local folder was replaced and the new one is right: record it and sync"),
     )
     .action(async function (
       this: Command,
       id: string | undefined,
-      args: { keep?: "local" | "disk" | "both"; allowDeletions?: string; repin?: boolean },
+      args: {
+        keep?: "local" | "disk" | "both"
+        allowDeletions?: string
+        allowReplacements?: string
+        repin?: boolean
+      },
     ) {
       const home = mirrorsHome(this)
       const chosen = home.chosen(id)
-      const allowDeletions = args.allowDeletions === undefined ? undefined : Number(args.allowDeletions)
-      if (allowDeletions !== undefined && (!Number.isSafeInteger(allowDeletions) || allowDeletions < 1))
-        throw new CliError("validation_error", "--allow-deletions takes the number of files the run may delete", {
-          param: "--allow-deletions",
-        })
+      const count = (value: string | undefined, flag: string, what: string) => {
+        if (value === undefined) return undefined
+        const number = Number(value)
+        if (!Number.isSafeInteger(number) || number < 1)
+          throw new CliError("validation_error", `${flag} takes the number of files the run may ${what}`, {
+            param: flag,
+          })
+        // An approval is for the files one mirror's preview showed, never for every mirror at once.
+        if (chosen.length > 1)
+          throw new CliError(
+            "validation_error",
+            `${flag} needs the mirror's id; see ${CLI} ${home.profile} mirrors list`,
+            {
+              param: flag,
+            },
+          )
+        return number
+      }
+      const allowDeletions = count(args.allowDeletions, "--allow-deletions", "delete")
+      const allowReplacements = count(args.allowReplacements, "--allow-replacements", "replace")
       const keep = keepOf(args.keep)
       const token = tokenOf(this)
       const { items, issues } = await contextOf(this).run((events) =>
@@ -415,6 +515,7 @@ const syncCommand = () =>
           mirrors: chosen,
           ...(keep ? { keep } : {}),
           ...(allowDeletions ? { allowDeletions } : {}),
+          ...(allowReplacements ? { allowReplacements } : {}),
           ...(args.repin ? { repin: true } : {}),
         }),
       )
@@ -424,6 +525,11 @@ const syncCommand = () =>
       )
       if (issues.length) body.meta = { ...body.meta, complete: false, issues }
       output(this, body)
+      const stop = items.flatMap((item) => item.errors).find((error) => error.reason && STOPS.has(error.reason))
+      if (stop)
+        throw new CliError(stop.code === "confirmation_required" ? stop.code : "validation_error", stop.message, {
+          reason: stop.reason,
+        })
       if (issues.length)
         throw new CliError(
           "provider_error",
@@ -437,7 +543,14 @@ interface Cycle {
   triggers: string[]
   mirrors: string[]
   error?: { code: string; message: string }
-  results?: { id: string; uploaded: string[]; downloaded: string[]; trashed: unknown[]; conflicts: unknown[] }[]
+  results?: {
+    id: string
+    uploaded: string[]
+    downloaded: string[]
+    trashed: unknown[]
+    conflicts: unknown[]
+    errors: { path: string; message: string }[]
+  }[]
 }
 
 const describeCycle = (cycle: Cycle) => {
@@ -446,7 +559,12 @@ const describeCycle = (cycle: Cycle) => {
   const parts = (cycle.results ?? []).map(
     (result) =>
       `${result.id} ${result.uploaded.length} sent, ${result.downloaded.length} pulled, ${result.trashed.length} trashed` +
-      (result.conflicts.length ? `, ${result.conflicts.length} conflicts (mirrors sync ${result.id} --keep …)` : ""),
+      (result.conflicts.length ? `, ${result.conflicts.length} conflicts (mirrors sync ${result.id} --keep …)` : "") +
+      // A run the guard or a root problem stopped says why at every cycle, until the owner settles it.
+      result.errors
+        .filter((error) => error.path === ".")
+        .map((error) => `; stopped: ${error.message}`)
+        .join(""),
   )
   return `${time} ${cycle.triggers.join("+")}: ${parts.join("; ") || "nothing to do"}`
 }
@@ -598,5 +716,7 @@ export const mirrorsCommand = (): Command =>
     .addCommand(previewCommand())
     .addCommand(syncCommand())
     .addCommand(watchCommand())
+    .addCommand(exclusionsCommand("exclude"))
+    .addCommand(exclusionsCommand("include"))
     .addCommand(removeCommand())
     .addCommand(versionsCommand())

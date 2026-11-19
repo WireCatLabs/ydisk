@@ -39,7 +39,8 @@
   file back.
 - **Share on request.** A public link for a file or folder, and close it again when you are done.
 - **A folder on your computer that stays in step with the Disk.** Edit files with your own tools; a mirror sends
-  your changes up and brings the Disk's down. A deleted file goes to a trash, never away.
+  your changes up and brings the Disk's down. Mirror one folder or the whole Disk, and leave out the folders you
+  choose. A deleted file goes to a trash, never away, and many deletions at once wait for your approval.
 - **See the whole picture.** The copies sit next to your messages, mail, notes and meetings from the other WireCat
   tools, so one search covers all of them.
 

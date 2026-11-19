@@ -109,30 +109,65 @@ it("downloads a file into a new local file, and reads the account and the Disk's
   expect(await target.revision?.()).not.toBe(before)
 })
 
-it("walks the listing again when the Disk changes under it, and calls it incomplete when it never holds still", async () => {
+it("a walk the Disk changed under is still complete, and a file it missed is found by a direct read", async () => {
   const { disk, target } = over()
   for (let n = 0; n < 205; n++) disk.put(`disk:/Big/f${String(n).padStart(3, "0")}.txt`, String(n))
-  disk.put("disk:/Big/Later/x.txt", "x")
-  let once = true
   disk.beforePage = (path, offset) => {
-    if (path !== "disk:/Big" || offset !== 200 || !once) return
-    once = false
-    // Page two shifts by one: without a second walk f200 would be missing from a listing called complete.
-    disk.remove("disk:/Big/f000.txt")
-    disk.move("disk:/Big/Later/x.txt", "disk:/Big/aaa.txt")
+    // Page two shifts by one, so f200 is never listed although it is still there.
+    if (path === "disk:/Big" && offset === 200) disk.remove("disk:/Big/f000.txt")
   }
   const listed = await target.list("disk:/Big")
   expect(listed?.complete).toBe(true)
-  const paths = listed?.files.map((file) => file.path) ?? []
-  expect(paths).toHaveLength(205)
-  expect(paths).toEqual(expect.arrayContaining(["f200.txt", "f204.txt", "aaa.txt"]))
-  expect(paths).not.toContain("f000.txt")
-  let n = 0
-  disk.beforePage = (path, offset) => {
-    if (path === "disk:/Big" && offset === 200) disk.put(`disk:/Elsewhere/${n++}.txt`, "busy")
+  expect(listed?.files.map((file) => file.path)).not.toContain("f200.txt")
+  expect(await target.exists("disk:/Big/f200.txt")).toBe(true)
+  expect(await target.exists("disk:/Big/f000.txt")).toBe(false)
+  expect(disk.calls.filter((call) => call.url.searchParams.get("fields") === "revision")).toEqual([])
+})
+
+it("lists the whole Disk from its flat listing, whatever page size it really serves", async () => {
+  const { disk, target } = over()
+  for (let n = 0; n < 25; n++) disk.put(`disk:/Photos/${String(n).padStart(2, "0")}.jpg`, String(n))
+  disk.put("disk:/Docs/a.md", "a")
+  disk.put("disk:/.hidden/x.md", "x")
+  disk.put("disk:/Docs/node_modules/y.js", "y")
+  disk.filesPageCap = 7
+  const listed = await target.list("disk:/")
+  expect(listed).toMatchObject({ rootId: disk.nodes.get("disk:/")?.resource_id, complete: true })
+  expect(listed?.files).toHaveLength(26)
+  expect(listed?.files.find((file) => file.path === "Docs/a.md")).toMatchObject({
+    id: disk.nodes.get("disk:/Docs/a.md")?.resource_id,
+    sha256: disk.nodes.get("disk:/Docs/a.md")?.sha256,
+  })
+  const pages = disk.calls.filter((call) => call.url.pathname === "/v1/disk/resources/files")
+  expect(pages.map((call) => call.url.searchParams.get("offset"))).toEqual(["0", "7", "14", "21", "28"])
+  expect(disk.calls.filter((call) => call.url.pathname === "/v1/disk/resources")).toHaveLength(1)
+})
+
+it("keeps a file the flat listing returns twice once, and a failed page leaves it incomplete", async () => {
+  const { disk, target } = over()
+  for (let n = 0; n < 10; n++) disk.put(`disk:/b${n}.txt`, String(n))
+  disk.filesPageCap = 5
+  disk.beforeFilesPage = (offset) => {
+    if (offset === 5) disk.put("disk:/a-new.txt", "new")
   }
-  expect(await target.list("disk:/Big")).toMatchObject({ complete: false })
-  expect(n).toBe(3)
+  const listed = await target.list("disk:/")
+  expect(listed?.files.map((file) => file.path)).toEqual(Array.from({ length: 10 }, (_, n) => `b${n}.txt`))
+  expect(listed?.complete).toBe(true)
+  let failing = false
+  const failingTarget = diskTarget(
+    transport({
+      token: FAKE_TOKEN,
+      fetch: async (input, init) => {
+        const url = new URL(String(input))
+        if (failing && url.pathname === "/v1/disk/resources/files" && url.searchParams.get("offset") === "5")
+          return new Response(JSON.stringify({ error: "DiskForbiddenError" }), { status: 403 })
+        return disk.fetch(input, init)
+      },
+    }),
+    linkFetch({ hosts: LINK_HOSTS, fetch: disk.fetch }),
+  )
+  failing = true
+  expect(await failingTarget.list("disk:/")).toMatchObject({ complete: false })
 })
 
 it("refuses to replace or trash a file when no hash can show it is the one listed", async () => {
