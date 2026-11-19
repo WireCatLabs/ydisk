@@ -82,7 +82,13 @@ raw resources-list --path "disk:/ydisk-live/probe-$stamp.txt" >"$work/probe-1.js
 raw disk-get --fields revision >"$work/rev-1.json"
 echo "probe two, longer $stamp" >"$work/probe.txt"
 "${cli[@]}" live files upload "$work/probe.txt" --folder /ydisk-live --name "probe-$stamp.txt" --replace --yes --json >/dev/null
-raw resources-list --path "disk:/ydisk-live/probe-$stamp.txt" >"$work/probe-2.json"
+# A replace the Disk took with 202 lands later: until then the file reads as missing or with the old sha256.
+want=$(sha256sum "$work/probe.txt" | cut -d" " -f1)
+for _ in $(seq 20); do
+  raw resources-list --path "disk:/ydisk-live/probe-$stamp.txt" >"$work/probe-2.json"
+  grep -q "$want" "$work/probe-2.json" && break
+  sleep 1
+done
 raw disk-get --fields revision >"$work/rev-2.json"
 raw resources-delete --path "disk:/ydisk-live/probe-$stamp.txt" --md5 00000000000000000000000000000000 --yes >"$work/del-wrong.json"
 raw resources-list --path "disk:/ydisk-live/probe-$stamp.txt" --fields path >"$work/after-wrong.json"
@@ -92,7 +98,7 @@ node -e '
   const [one, two, r1, r2, del, after] = process.argv.slice(1, 7).map(read)
   const local = require("crypto").createHash("sha256").update(fs.readFileSync(process.argv[7])).digest("hex")
   const fail = (message) => { throw new Error(message) }
-  if (two.item.sha256 !== local) fail("the Disk sha256 is not the sha256 of the content")
+  if (two.item?.sha256 !== local) fail(`the Disk sha256 is not the sha256 of the content: ${JSON.stringify(two)}`)
   if (one.item.resource_id !== two.item.resource_id) fail("a replacing upload gave the file a new resource_id")
   if (!(r2.item.revision > r1.item.revision)) fail("the Disk revision did not move with a write")
   if (del.error?.details?.status !== 409) fail("a delete with a wrong md5 was not refused with 409")
