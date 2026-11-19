@@ -179,7 +179,7 @@ const ID = "mirror id from mirrors list"
 const HINTS = {
   preview: "`mirrors preview <id>`",
   repin: "`mirrors sync <id> --repin`",
-  allowDeletions: "with `--allow-deletions <count>`",
+  allowDeletions: "with `mirrors sync <id> --allow-deletions <count>`",
 }
 
 const realOf = (path: string) => {

@@ -375,7 +375,9 @@ it("stops a run that would delete many files until --allow-deletions covers them
     error: {
       code: "confirmation_required",
       reason: "mirror.too-many-deletions",
-      message: expect.stringMatching(/`mirrors preview <id>` and allow them with `--allow-deletions <count>`/u),
+      message: expect.stringMatching(
+        /`mirrors preview <id>` and allow them with `mirrors sync <id> --allow-deletions <count>`/u,
+      ),
     },
   })
   expect(disk.trash.size).toBe(0)

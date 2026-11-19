@@ -132,8 +132,10 @@ ydisk personal mirrors versions restore 1a2b3c4d notes/plan.md <sha256>
 ```
 
 `versions list` shows each change, oldest first: when, which way, the content's hash before (`old`) and after
-(`new`), and which side the old content came from (`from`). `available` says whether that content is still kept. `versions restore` puts a kept version back into the
-local folder; the file there now is kept first. The next sync sends the restored file to the Disk.
+(`new`), and which side the old content came from (`from`: `local`, or `remote` for the Disk). `available` says
+whether that content is still kept. When the Disk's old content was not kept because the file went to the Disk's
+trash, `old_in` is `remote-trash`: restore it from the Disk's trash. `versions restore` puts a kept version back into
+the local folder; the file there now is kept first. The next sync sends the restored file to the Disk.
 
 A version stays for 30 days. The last version of a file that was deleted stays for good. A version from the Disk is
 restored into the local folder too, and the next sync sends it back.
