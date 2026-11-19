@@ -3,7 +3,7 @@
 - **Mirror the whole Disk.** `mirrors add / ~/YandexDisk` keeps the whole Disk in a folder of its own, read with
   Yandex's flat file list, up to 100,000 files. See [the whole Disk](../docs/mirrors.md#the-whole-disk).
 - **Leave folders out of a mirror.** `mirrors add --ignore <path>` (repeated, a path or a glob) and
-  `mirrors update <id> --ignore <path>…` or `--clear`. An ignored path is never deleted on either side: ignoring one
+  `mirrors update <id> --ignore <path>…` adds to the list, and `--clear` empties it first. An ignored path is never deleted on either side: ignoring one
   trashes nothing, and one no longer ignored syncs as a new folder. See [leave folders out](../docs/mirrors.md#leave-folders-out).
 - **A sync checks free space first.** It stops with `mirror.no-space` when its downloads and the versions it keeps
   would leave too little free: a tenth of what it writes, at least 100 MB and at most 1 GB.

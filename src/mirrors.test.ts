@@ -484,7 +484,7 @@ it("mirrors the whole Disk into a folder of its own, leaving excluded paths alon
   expect(existsSync(join(root, "Docs/big.iso"))).toBe(false)
   expect(disk.calls.some((call) => call.url.pathname === "/v1/disk/resources/files")).toBe(true)
 
-  const ignored = await cli(["update", id, "--ignore", "Photos", "--ignore", "*.iso", "--ignore", "Notes"])
+  const ignored = await cli(["update", id, "--ignore", "Notes", "--ignore", "*.iso"])
   expect(ignored.json().item).toEqual({ id, ignore: ["Photos", "*.iso", "Notes"] })
   rmSync(join(root, "Notes"), { recursive: true })
   disk.remove("disk:/Docs/report.txt")
@@ -493,7 +493,7 @@ it("mirrors the whole Disk into a folder of its own, leaving excluded paths alon
   expect(disk.trash.size).toBe(0)
   expect(text(disk, "plan.md")).toBe("p")
 
-  const included = await cli(["update", id, "--ignore", "Photos", "--ignore", "*.iso"])
+  const included = await cli(["update", id, "--clear", "--ignore", "Photos", "--ignore", "*.iso"])
   expect(included.json().item).toEqual({ id, ignore: ["Photos", "*.iso"] })
   const back = await synced(cli, id)
   expect(back.result).toMatchObject({ downloaded: ["Notes/plan.md"], trashed: [] })

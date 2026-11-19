@@ -300,38 +300,41 @@ const ignoreOption = () =>
       "*.iso) or a path from the mirror's root (/Photos)",
   ).argParser(collect)
 
-/** Sets what a mirror ignores under the sync lock, so no running sync reads half of it. */
+/** Changes what a mirror ignores under the sync lock, so no running sync reads half of it. */
 const updateCommand = () =>
   annotate(new Command("update"), {
     effects: LOCAL_WRITE,
     mcp: false,
     examples: [
       `${CLI} personal mirrors update 1a2b3c4d --ignore Photos --ignore "*.iso"`,
-      `${CLI} personal mirrors update 1a2b3c4d --clear`,
+      `${CLI} personal mirrors update 1a2b3c4d --clear --ignore Photos`,
     ],
   })
-    .summary("set which paths a mirror ignores; nothing is deleted on either side")
+    .summary("add paths a mirror ignores, or clear the list; nothing is deleted on either side")
     .description(
-      "set which paths a mirror ignores: the --ignore paths given replace the list mirrors list shows. An ignored " +
-        "path is left alone on both sides and never deleted, now or later; one no longer ignored is synced as a new " +
-        "folder, copying one-sided files and reporting different ones as conflicts, deleting nothing",
+      "add paths to what a mirror ignores, as mirrors list shows it. --clear empties the list first, so --clear with " +
+        "--ignore keeps only the paths given: that is how one path stops being ignored. An ignored path is left alone " +
+        "on both sides and never deleted, now or later; one no longer ignored is synced as a new folder, copying " +
+        "one-sided files and reporting different ones as conflicts, deleting nothing",
     )
     .argument("<id>", ID)
     .addOption(ignoreOption())
-    .addOption(new Option("--clear", "ignore nothing: sync every path again"))
+    .addOption(new Option("--clear", "empty the list before adding any --ignore paths; alone, sync every path again"))
     .action(async function (this: Command, id: string, args: { ignore?: string[]; clear?: boolean }) {
       const home = mirrorsHome(this)
       home.find(id)
-      if (!args.ignore?.length === !args.clear)
-        throw new CliError("validation_error", "give the paths to ignore with --ignore, or --clear to ignore none", {
+      if (!args.ignore?.length && !args.clear)
+        throw new CliError("validation_error", "give a path to ignore with --ignore, or --clear to empty the list", {
           param: "--ignore",
         })
-      const exclude = [...new Set((args.ignore ?? []).map(exclusionPattern))]
+      const added = (args.ignore ?? []).map(exclusionPattern)
       const held = await home.lock()
+      let exclude: string[] = []
       try {
         await home.save(
           home.mirrors().map((one) => {
             if (one.id !== id) return one
+            exclude = [...new Set([...(args.clear ? [] : (one.exclude ?? [])), ...added])]
             const { exclude: _, ...rest } = one
             return exclude.length ? { ...rest, exclude } : rest
           }),

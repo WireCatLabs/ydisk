@@ -841,7 +841,7 @@
         "mirrors",
         "update"
       ],
-      "summary": "set which paths a mirror ignores; nothing is deleted on either side",
+      "summary": "add paths a mirror ignores, or clear the list; nothing is deleted on either side",
       "effects": {
         "remote": "none",
         "local": "write"

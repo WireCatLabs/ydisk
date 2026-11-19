@@ -1289,7 +1289,7 @@ ydisk mirrors watch [id] [options]
 
 ### `ydisk mirrors update`
 
-set which paths a mirror ignores: the --ignore paths given replace the list mirrors list shows. An ignored path is left alone on both sides and never deleted, now or later; one no longer ignored is synced as a new folder, copying one-sided files and reporting different ones as conflicts, deleting nothing
+add paths to what a mirror ignores, as mirrors list shows it. --clear empties the list first, so --clear with --ignore keeps only the paths given: that is how one path stops being ignored. An ignored path is left alone on both sides and never deleted, now or later; one no longer ignored is synced as a new folder, copying one-sided files and reporting different ones as conflicts, deleting nothing
 
 **Changes something on this computer only.**
 
@@ -1304,9 +1304,9 @@ ydisk mirrors update <id> [options]
 | Option | What it does |
 |---|---|
 | `--ignore <path>` | leave this path out on both sides, a path or a glob; repeat it for more: a name at any depth (node_modules, *.iso) or a path from the mirror's root (/Photos). |
-| `--clear` | ignore nothing: sync every path again. |
+| `--clear` | empty the list before adding any --ignore paths; alone, sync every path again. |
 
-**Example:** `ydisk personal mirrors update 1a2b3c4d --ignore Photos --ignore "*.iso"`, `ydisk personal mirrors update 1a2b3c4d --clear`
+**Example:** `ydisk personal mirrors update 1a2b3c4d --ignore Photos --ignore "*.iso"`, `ydisk personal mirrors update 1a2b3c4d --clear --ignore Photos`
 
 ### `ydisk mirrors remove`
 

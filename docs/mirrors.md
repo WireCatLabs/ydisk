@@ -68,11 +68,12 @@ works like any other mirror: everything on this page holds for it. Two things ma
 ## Leave folders out
 
 An ignored path is left alone on both sides: it is not sent, not brought down and never deleted. Give the paths
-when you add the mirror (`--ignore`, repeated), or set the whole list again later. `mirrors list` shows it:
+when you add the mirror (`--ignore`, repeated), or add more later. `mirrors list` shows the list. `--clear` empties
+it first, so `--clear` with `--ignore` keeps only the paths you give: that is how one path stops being ignored.
 
 ```sh
 ydisk personal mirrors update 1a2b3c4d --ignore Photos --ignore "*.iso"
-ydisk personal mirrors update 1a2b3c4d --clear
+ydisk personal mirrors update 1a2b3c4d --clear --ignore "*.iso"
 ```
 
 - A pattern without `/` is a name at any depth: `node_modules`, `*.iso`, `Backups`.
