@@ -1,5 +1,5 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs"
-import { request as httpRequest } from "node:http"
+import { createServer, request as httpRequest } from "node:http"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 import { run } from "./program.js"
@@ -156,6 +156,24 @@ describe("files serve", () => {
     expect(mounted.url).toBeUndefined()
     expect(await mounted.end()).not.toBe(0)
     expect(mounted.err.join("") + mounted.out.join("")).toContain("files serve shows a folder")
+  })
+
+  it("answers the address and the mount steps as an item under --json", async () => {
+    const mounted = await mount(["/Work", "--json"])
+    const answer = JSON.parse(mounted.out.join("")) as { item: Record<string, unknown> }
+    expect(answer.item).toMatchObject({ path: "disk:/Work", url: String(mounted.url), read_only: true })
+    expect(answer.item.mount).toHaveProperty("windows", `net use * ${mounted.url}`)
+    await mounted.end()
+  })
+
+  it("names a port another program holds", async () => {
+    const taken = createServer()
+    await new Promise<void>((resolve) => taken.listen(0, "127.0.0.1", resolve))
+    const port = (taken.address() as { port: number }).port
+    const mounted = await mount(["--port", String(port)])
+    expect(await mounted.end()).not.toBe(0)
+    expect(mounted.err.join("") + mounted.out.join("")).toContain(`port ${port} is in use`)
+    taken.close()
   })
 
   it("refuses a port out of range", async () => {

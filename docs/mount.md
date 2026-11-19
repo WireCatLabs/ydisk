@@ -46,8 +46,10 @@ gio mount dav://127.0.0.1:41234/Xy…/
 ```
 
 The folder then shows in the file manager's side bar, and programs reach it under
-`/run/user/$(id -u)/gvfs/`. `gio mount -u dav://…` unmounts it. In a file manager you can also type the `dav://…`
-address in "Other Locations" > "Connect to Server".
+`/run/user/$(id -u)/gvfs/dav:host=127.0.0.1,port=…,ssl=false/<secret>/`. A program that writes a file there may
+report success, but nothing reaches the Disk: GNOME's layer drops the refusal when the file closes.
+`gio mount -u dav://…` unmounts it. In a file manager you can also type the `dav://…` address in "Other Locations" >
+"Connect to Server".
 
 ## macOS
 
