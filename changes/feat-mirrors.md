@@ -6,8 +6,8 @@
   trash, the Disk's or `.wirecat-trash/` in the folder, and only when the sync can prove it: a file missing from an
   incomplete listing, or from a folder that was replaced, is never deleted. `mirrors preview` shows the plan, and a run that
   would delete many files waits for `--allow-deletions`. See [mirrors](../docs/mirrors.md).
-- `mirrors versions list|restore`: the version a sync replaced or deleted on your computer is kept for 30 days and
-  can be put back.
+- `mirrors versions list|restore`: the version a sync replaced or deleted, on your computer or on the Disk, is kept for
+  30 days and can be put back.
 
 ### Fixed
 

@@ -29,7 +29,7 @@ on cli-core's shared documents commands.
 | `--folder <path>`, `--name`, `--replace` | `--parent <id>`, `--overwrite` | the vocabulary's flags; the Disk API addresses by path |
 | `files publish`, `files unpublish` | `permissions` | the Disk has public links, not per-person sharing |
 | `mirrors add <folder> <path>` | `mirrors add <path> --parent <id>` | the Disk addresses a folder by path; the Disk side is `disk` in `--keep` and conflict reports |
-| `mirrors versions list\|restore` | — | the whole-file engine keeps local versions; drive's document push merges text instead |
+| `mirrors versions list\|restore` | — | the whole-file engine keeps replaced versions from both sides; drive's document push merges text instead |
 | no `sheets`, `comments`, `revisions` | — | Google-only |
 
 ## The source
@@ -67,10 +67,10 @@ the commands. Settled on 2026-11-18 by live probes, asserted by `scripts/live.sh
   local rename is a deletion and a new file.
 - **Watch** polls `GET /v1/disk?fields=revision`, which moves with every write, and lists only when it moved.
 - **The listing** walks the folder 200 entries a page without a `fields` filter (one mistyped field would drop
-  `sha256` on the real Disk while the fake still sent it). A folder that fails to list, or more than 10,000 files,
-  makes the listing incomplete, so no file is taken as deleted.
+  `sha256` on the real Disk while the fake still sent it). A folder that fails to list, more than 10,000 files, or a
+  Disk revision that moves during three walks makes the listing incomplete, so no file is taken as deleted.
 - **Storage:** `profiles/<profile>/mirrors.json` (the pairs with the account), `mirrors/<id>.json` (the engine's
-  state; `add` pins the Disk folder's `resource_id`), `mirrors/<id>.versions/` (kept local versions) and
+  state; `add` pins the Disk folder's `resource_id`), `mirrors/<id>.versions/` (kept versions, local and the Disk's) and
   `mirrors/sync.lock`, one lock for sync, watch, restore and remove. `remove` deletes the state, so a pair added
   again starts with a first sync, which deletes nothing.
 - **Permissions:** every write runs under `mirrors.sync` or `mirrors.watch`; a file put on the Disk also checks

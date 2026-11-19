@@ -100,25 +100,13 @@ const mirrorsHome = (command: Command) => {
     statePath: (mirror: Mirror) => join(states, `${mirror.id}.json`),
     stateOf: (mirror: SavedMirror) => fileSyncState(states, mirror, mirror.account),
     versionsOf: (mirror: Mirror) => fileVersions(join(states, `${mirror.id}.versions`)),
-    lock: async () => {
-      const lock = await acquireLock(join(states, "sync.lock")).catch((error: unknown) => {
+    lock: () =>
+      acquireLock(join(states, "sync.lock")).catch((error: unknown) => {
         throw new CliError("provider_unavailable", "another mirrors sync or watch holds this profile; retry later", {
           reason: "profile.busy",
           ...(isCliError(error) ? { holders: error.details.holders } : {}),
         })
-      })
-      let held = true
-      return {
-        assertHeld: () => {
-          if (!held)
-            throw new CliError("provider_unavailable", "the mirrors lock was released", { reason: "profile.busy" })
-        },
-        release: async () => {
-          held = false
-          await lock.release()
-        },
-      }
-    },
+      }),
   }
 }
 
@@ -172,6 +160,7 @@ const engineOf = (command: Command, disk: Disk, chosen: SavedMirror[]) => {
     operationId: newOperationId,
     errorOf,
     lock: home.lock,
+    hints: HINTS,
     stateOf: (mirror: Mirror) => home.stateOf(mirror as SavedMirror),
     versionsOf: home.versionsOf,
     remote: REMOTE,
@@ -186,6 +175,12 @@ const allOf = <T>(command: string, items: T[]) =>
   listOf(command, { items, limit: Math.max(1, items.length), has_more: false })
 
 const ID = "mirror id from mirrors list"
+
+const HINTS = {
+  preview: "`mirrors preview <id>`",
+  repin: "`mirrors sync <id> --repin`",
+  allowDeletions: "with `--allow-deletions <count>`",
+}
 
 const realOf = (path: string) => {
   try {

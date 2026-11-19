@@ -2,8 +2,8 @@
 
 A mirror keeps a folder on your computer and a folder on Yandex Disk the same, both ways. Edit a file in your editor,
 and the next sync puts it on the Disk. Change it on the Disk, on your phone or in the browser, and the sync brings it
-down. A deleted file goes to a trash, never away, and the version a sync replaces on your computer is kept. What a
-sync replaces on the Disk is not kept by `ydisk`, so a file changed on both sides is never overwritten without you.
+down. A deleted file goes to a trash, never away, and the version a sync replaces is kept, on either side. A file
+changed on both sides is never overwritten without you.
 
 Use a mirror when you work on files with local tools, such as an editor, a script or an agent, and want them on the
 Disk too, without installing the Yandex Disk app. The files stay as they are: a PDF stays a PDF, a note stays a
@@ -77,7 +77,7 @@ Settle the conflicts with another run:
 
 | Command | What happens |
 | --- | --- |
-| `mirrors sync --keep local` | Your copy replaces the Disk's. The Disk's version is not kept: use `--keep both` when unsure. |
+| `mirrors sync --keep local` | Your copy replaces the Disk's. The Disk's is kept as an [earlier version](#earlier-versions-of-a-file). |
 | `mirrors sync --keep disk` | The Disk's copy replaces yours. Yours is kept as an [earlier version](#earlier-versions-of-a-file). |
 | `mirrors sync --keep both` | The Disk's copy comes down beside yours as `name (conflict 2026-11-19 disk).ext`, and both go to the Disk. |
 
@@ -121,20 +121,22 @@ is never deleted: it is reported as a conflict instead. The local trash folder i
 
 ## Earlier versions of a file
 
-Before a sync replaces or deletes a file on your computer, it keeps the file's content in the profile's state
-folder, outside the mirrored folder. It also logs every change it makes, both ways.
+Before a sync replaces or deletes a file on your computer, or replaces one on the Disk, it keeps the file's content
+in the profile's state folder, outside the mirrored folder. The Disk's old content is downloaded first; when it cannot
+be kept, or it changed since the listing, that file is not replaced. A file deleted on the Disk is in the Disk's
+trash. The sync also logs every change it makes, both ways.
 
 ```sh
 ydisk personal mirrors versions list 1a2b3c4d notes/plan.md
 ydisk personal mirrors versions restore 1a2b3c4d notes/plan.md <sha256>
 ```
 
-`versions list` shows each change, oldest first: when, which way, and the content's hash before (`old`) and after
-(`new`). `available` says whether that content is still kept. `versions restore` puts a kept version back into the
+`versions list` shows each change, oldest first: when, which way, the content's hash before (`old`) and after
+(`new`), and which side the old content came from (`from`). `available` says whether that content is still kept. `versions restore` puts a kept version back into the
 local folder; the file there now is kept first. The next sync sends the restored file to the Disk.
 
-A version stays for 30 days. The last version of a file that was deleted stays for good. Only versions from your
-computer are kept: when a sync replaces a file on the Disk, `ydisk` keeps no copy of the Disk's old content.
+A version stays for 30 days. The last version of a file that was deleted stays for good. A version from the Disk is
+restored into the local folder too, and the next sync sends it back.
 
 ## A folder that was replaced
 
@@ -181,7 +183,7 @@ set `files.delete` to `deny` for an agent that should not replace or delete file
 ## What is not synced
 
 - Hidden files and folders (a name starting with `.`), `node_modules`, and editor leftovers (`~$name`, names
-  ending in `~`, `.swp` or `.tmp`), on both sides.
+  ending in `~`, `.swp` or `.tmp`), on both sides. Such a Disk folder is not even listed.
 - Symbolic links. A file under a link is never deleted because of it.
 - A mirror of more than 10,000 files.
 - Empty folders.

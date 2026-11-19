@@ -222,7 +222,7 @@ it("a Disk folder replaced by another is refused until --repin, which then delet
   const refused = await synced(cli, id)
   expect(refused.code).not.toBe(0)
   expect(refused.result.errors).toEqual([
-    { path: ".", code: "confirmation_required", message: expect.stringContaining("--repin") },
+    { path: ".", code: "confirmation_required", message: expect.stringContaining(`mirrors sync <id> --repin`) },
   ])
   const repinned = await synced(cli, id, "--repin")
   expect(repinned.code, repinned.err).toBe(0)
@@ -371,7 +371,11 @@ it("stops a run that would delete many files until --allow-deletions covers them
   for (let n = 0; n < 4; n++) rmSync(join(root, `f${n}.txt`))
   const stopped = await synced(cli, id)
   expect(stopped.json()).toMatchObject({
-    error: { code: "confirmation_required", reason: "mirror.too-many-deletions" },
+    error: {
+      code: "confirmation_required",
+      reason: "mirror.too-many-deletions",
+      message: expect.stringMatching(/`mirrors preview <id>` and allow them with `--allow-deletions <count>`/u),
+    },
   })
   expect(disk.trash.size).toBe(0)
   const invalid = await synced(cli, id, "--allow-deletions", "some")
@@ -413,4 +417,36 @@ it("add refuses a credential folder, and a folder that is or holds the CLI's own
     expect(refused.json(), path).toMatchObject({ error: { code: "validation_error", reason: "mirror.not-folder" } })
   }
   expect(disk.calls).toEqual([])
+})
+
+it("--keep local keeps the Disk's old content as a version before it replaces the Disk file", async () => {
+  const { cli, root, disk } = setup({ "c.txt": "c1" })
+  const id = await added(cli, root)
+  await synced(cli, id)
+  write(root, "c.txt", "c2 here")
+  disk.put("disk:/Notes/c.txt", "c2 on the disk")
+  expect((await synced(cli, id)).result.conflicts).toEqual([expect.objectContaining({ path: "c.txt" })])
+  const kept = await synced(cli, id, "--keep", "local")
+  expect(kept.code, kept.err).toBe(0)
+  expect(text(disk, "c.txt")).toBe("c2 here")
+  const events = (await cli(["versions", "list", id, "c.txt"])).json().items as {
+    event: string
+    from?: string
+    old?: string
+    available: boolean
+  }[]
+  const replaced = events.find((event) => event.from === "remote")
+  expect(replaced).toMatchObject({ available: true })
+  const restored = await cli(["versions", "restore", id, "c.txt", replaced?.old as string])
+  expect(restored.code, restored.err).toBe(0)
+  expect(read(root, "c.txt")).toBe("c2 on the disk")
+})
+
+it("never lists or brings down a Disk .git or node_modules folder", async () => {
+  const { cli, root, disk } = setup({ "a.txt": "a", ".git/HEAD": "ref", "node_modules/x/index.js": "x" })
+  const id = await added(cli, root)
+  const first = await synced(cli, id)
+  expect(first.result.downloaded).toEqual(["a.txt"])
+  expect(existsSync(join(root, ".git"))).toBe(false)
+  expect(disk.calls.some((call) => call.url.searchParams.get("path")?.includes("node_modules"))).toBe(false)
 })

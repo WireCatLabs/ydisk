@@ -6,7 +6,7 @@ import type { ReadableStream } from "node:stream/web"
 import { setTimeout as sleep } from "node:timers/promises"
 import { CliError, isCliError } from "@wirecat/cli-base"
 import type { FetchLike } from "@wirecat/cli-base/http"
-import type { Expect, FileTarget, RemoteFile } from "@wirecat/cli-core/documents"
+import { type Expect, type FileTarget, type RemoteFile, skippedName } from "@wirecat/cli-core/documents"
 import * as v from "valibot"
 import { SERVICE } from "../identity.js"
 import { PAGE } from "./source.js"
@@ -45,9 +45,14 @@ export const MAX_MIRROR_FILES = 10_000
 
 const statusOf = (error: unknown) => (isCliError(error) ? error.details?.status : undefined)
 
-const changed = (path: string) => new CliError("conflict", `the ${SERVICE} file ${path} is not the one the sync listed`)
+const changed = (path: string) =>
+  new CliError("conflict", `the ${SERVICE} file ${path} is not the one the sync listed`, {
+    reason: "mirror.remote-changed",
+  })
 const unproven = (path: string) =>
-  new CliError("conflict", `${SERVICE} gives no hash for ${path}, so the sync cannot prove it is the file it listed`)
+  new CliError("conflict", `${SERVICE} gives no hash for ${path}, so the sync cannot prove it is the file it listed`, {
+    reason: "mirror.remote-changed",
+  })
 
 /**
  * Yandex Disk as the file mirror's remote (cli-core `FileTarget`). Paths are the API's own, `disk:/Notes/a.md`. The
@@ -115,6 +120,7 @@ export const diskTarget = (api: Transport, links: FetchLike, signal?: AbortSigna
         }
         const items = answer._embedded?.items ?? []
         for (const item of items) {
+          if (skippedName(posix.basename(item.path))) continue
           if (item.type === "dir") folders.push(item.path)
           else files.push(remoteFile(item, prefix))
         }

@@ -141,8 +141,9 @@ it("refuses to replace or trash a file when no hash can show it is the one liste
   const listed = { sha256: disk.nodes.get("disk:/a.txt")?.sha256 as string }
   const node = disk.nodes.get("disk:/a.txt")
   disk.nodes.set("disk:/a.txt", { ...node, sha256: undefined, md5: undefined } as NonNullable<typeof node>)
-  await expect(target.upload("disk:/a.txt", local("b"), listed)).rejects.toMatchObject({ code: "conflict" })
-  await expect(target.trash("disk:/a.txt", listed)).rejects.toMatchObject({ code: "conflict" })
+  const refused = { code: "conflict", details: { reason: "mirror.remote-changed" } }
+  await expect(target.upload("disk:/a.txt", local("b"), listed)).rejects.toMatchObject(refused)
+  await expect(target.trash("disk:/a.txt", listed)).rejects.toMatchObject(refused)
   expect(disk.nodes.get("disk:/a.txt")?.text).toBe("a")
   expect(disk.trash.size).toBe(0)
   expect(disk.calls.filter((call) => call.method === "DELETE")).toEqual([])
