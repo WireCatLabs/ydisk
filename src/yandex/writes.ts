@@ -5,6 +5,7 @@ import { SERVICE } from "../identity.js"
 import type { Request, Transport } from "./transport.js"
 
 const Link = v.object({ href: v.string(), method: v.optional(v.string()) })
+const UploadLink = v.object({ href: v.string(), operation_id: v.optional(v.string()) })
 const Answer = v.optional(Link)
 const PublicUrl = v.object({ public_url: v.optional(v.string()) })
 
@@ -41,11 +42,12 @@ export const diskWrites = (api: Transport, links: FetchLike, signal?: AbortSigna
         (answer) => answer.public_url,
         () => undefined,
       ),
-    upload: async (path: string, body: Blob, replace: boolean): Promise<{ status: "done" | "in-progress" }> => {
+    /** A 202 means the Disk has the bytes but has not stored the file yet; its `disk_operation` says when it has. */
+    upload: async (path: string, body: Blob, replace: boolean): Promise<Outcome> => {
       // The link lives 30 minutes and takes the bytes without the token (https://yandex.ru/dev/disk-api/doc/en/reference/upload).
       const link = await api.send(
         { method: "GET", path: "disk/resources/upload", query: { path, overwrite: String(replace) } },
-        Link,
+        UploadLink,
       )
       let response: Response
       try {
@@ -73,7 +75,9 @@ export const diskWrites = (api: Transport, links: FetchLike, signal?: AbortSigna
           status: response.status,
           retryable: false,
         })
-      return { status: response.status === 202 ? "in-progress" : "done" }
+      return response.status === 202 && link.operation_id
+        ? { status: "in-progress", disk_operation: link.operation_id }
+        : { status: "done" }
     },
   }
 }

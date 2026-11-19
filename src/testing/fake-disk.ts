@@ -38,6 +38,10 @@ export interface FakeDisk {
   deny(path: string, status: 403 | 404): void
   /** Runs before each write reaches the fake, as another device's change between a sync's listing and its write. */
   beforeWrite?: (method: string, path: string) => void
+  /** Runs before each page of a folder is read, as another device's change in the middle of a listing. */
+  beforePage?: (path: string, offset: number) => void
+  /** Uploads answer 202 and land only once their operation is polled this many times more. */
+  acceptUploads?: number
   revision(): number
 }
 
@@ -63,6 +67,7 @@ export const fakeDisk = (): FakeDisk => {
   const nodes = new Map<string, Node>()
   const trash = new Map<string, Node>()
   const uploads = new Map<string, string>()
+  const operations = new Map<string, { polls: number; land: () => void }>()
   const denied = new Map<string, 403 | 404>()
   const calls: FakeDisk["calls"] = []
   const refusals: string[] = []
@@ -135,11 +140,25 @@ export const fakeDisk = (): FakeDisk => {
         if (method !== "PUT" || !path) return refuse(`no such upload ${url.pathname}`)
         uploads.delete(url.pathname)
         disk.beforeWrite?.("PUT", path)
-        at(path, "file", await new Response(init?.body).text())
-        return new Response(null, { status: 201 })
+        const text = await new Response(init?.body).text()
+        if (disk.acceptUploads === undefined) {
+          at(path, "file", text)
+          return new Response(null, { status: 201 })
+        }
+        operations.set(`op-${links}`, { polls: disk.acceptUploads, land: () => at(path, "file", text) })
+        return new Response(null, { status: 202 })
       }
       if (url.host !== API) return refuse(`unknown host ${url.host}`)
       if (auth !== `OAuth ${FAKE_TOKEN}`) return json(401, { error: "UnauthorizedError" })
+      const operation = url.pathname.match(/^\/v1\/disk\/operations\/([^/]+)$/u)?.[1]
+      if (method === "GET" && operation !== undefined) {
+        const pending = operations.get(operation)
+        if (!pending) return json(404, { error: "DiskNotFoundError" })
+        if (pending.polls-- > 0) return json(200, { status: "in-progress" })
+        operations.delete(operation)
+        pending.land()
+        return json(200, { status: "success" })
+      }
       const allowed = ALLOWED[`${method} ${url.pathname}`]
       if (!allowed) return refuse(`no such operation ${method} ${url.pathname}`)
       for (const key of url.searchParams.keys()) if (!allowed.includes(key)) return refuse(`unknown parameter ${key}`)
@@ -158,7 +177,12 @@ export const fakeDisk = (): FakeDisk => {
         if (nodes.get(parentOf(path))?.type !== "dir") return json(409, { error: "DiskPathDoesntExistsError" })
         const target = `/upload-target/${++links}`
         uploads.set(target, path)
-        return json(200, { href: `https://${UPLOADS}${target}`, method: "PUT", templated: false })
+        return json(200, {
+          href: `https://${UPLOADS}${target}`,
+          method: "PUT",
+          templated: false,
+          operation_id: `op-${links}`,
+        })
       }
       if (method === "PUT") {
         if (node) return json(409, { error: "DiskPathPointsToExistentDirectoryError" })
@@ -182,6 +206,7 @@ export const fakeDisk = (): FakeDisk => {
       }
       const limit = Number(url.searchParams.get("limit") ?? 20)
       const offset = Number(url.searchParams.get("offset") ?? 0)
+      if (node.type === "dir") disk.beforePage?.(path, offset)
       const all = node.type === "dir" ? childrenOf(path) : []
       return json(200, {
         ...resource(node),

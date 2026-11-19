@@ -108,3 +108,51 @@ it("downloads a file into a new local file, and reads the account and the Disk's
   disk.put("disk:/b.txt", "b")
   expect(await target.revision?.()).not.toBe(before)
 })
+
+it("walks the listing again when the Disk changes under it, and calls it incomplete when it never holds still", async () => {
+  const { disk, target } = over()
+  for (let n = 0; n < 205; n++) disk.put(`disk:/Big/f${String(n).padStart(3, "0")}.txt`, String(n))
+  disk.put("disk:/Big/Later/x.txt", "x")
+  let once = true
+  disk.beforePage = (path, offset) => {
+    if (path !== "disk:/Big" || offset !== 200 || !once) return
+    once = false
+    // Page two shifts by one: without a second walk f200 would be missing from a listing called complete.
+    disk.remove("disk:/Big/f000.txt")
+    disk.move("disk:/Big/Later/x.txt", "disk:/Big/aaa.txt")
+  }
+  const listed = await target.list("disk:/Big")
+  expect(listed?.complete).toBe(true)
+  const paths = listed?.files.map((file) => file.path) ?? []
+  expect(paths).toHaveLength(205)
+  expect(paths).toEqual(expect.arrayContaining(["f200.txt", "f204.txt", "aaa.txt"]))
+  expect(paths).not.toContain("f000.txt")
+  let n = 0
+  disk.beforePage = (path, offset) => {
+    if (path === "disk:/Big" && offset === 200) disk.put(`disk:/Elsewhere/${n++}.txt`, "busy")
+  }
+  expect(await target.list("disk:/Big")).toMatchObject({ complete: false })
+  expect(n).toBe(3)
+})
+
+it("refuses to replace or trash a file when no hash can show it is the one listed", async () => {
+  const { disk, target, local } = over()
+  disk.put("disk:/a.txt", "a")
+  const listed = { sha256: disk.nodes.get("disk:/a.txt")?.sha256 as string }
+  const node = disk.nodes.get("disk:/a.txt")
+  disk.nodes.set("disk:/a.txt", { ...node, sha256: undefined, md5: undefined } as NonNullable<typeof node>)
+  await expect(target.upload("disk:/a.txt", local("b"), listed)).rejects.toMatchObject({ code: "conflict" })
+  await expect(target.trash("disk:/a.txt", listed)).rejects.toMatchObject({ code: "conflict" })
+  expect(disk.nodes.get("disk:/a.txt")?.text).toBe("a")
+  expect(disk.trash.size).toBe(0)
+  expect(disk.calls.filter((call) => call.method === "DELETE")).toEqual([])
+})
+
+it("waits for an upload the Disk answered 202 to land before it reads the file back", async () => {
+  const { disk, target, local } = over()
+  disk.put("disk:/Notes")
+  disk.acceptUploads = 2
+  const sent = await target.upload("disk:/Notes/a.txt", local("late"), { absent: true })
+  expect(sent).toMatchObject({ path: "a.txt", sha256: disk.nodes.get("disk:/Notes/a.txt")?.sha256 })
+  expect(disk.calls.filter((call) => call.url.pathname.startsWith("/v1/disk/operations/"))).toHaveLength(3)
+})
