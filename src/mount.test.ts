@@ -135,7 +135,7 @@ describe("files serve", () => {
     const mounted = await mount([])
     for (const method of ["PUT", "DELETE", "MOVE", "COPY", "MKCOL", "PROPPATCH", "LOCK"]) {
       const answer = await send(new URL("Work/plan.txt", mounted.url), method)
-      expect(answer.status, method).toBe(405)
+      expect(answer.status, method).toBe(method === "MKCOL" ? 403 : 405)
     }
     await mounted.end()
     expect(mounted.service.calls.every((call) => call.method === "GET")).toBe(true)
