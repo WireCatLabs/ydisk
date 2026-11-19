@@ -1,6 +1,6 @@
 import { readFileSync, realpathSync, rmSync, statSync } from "node:fs"
 import { homedir } from "node:os"
-import { isAbsolute, join, relative, resolve, sep } from "node:path"
+import { isAbsolute, join, parse, relative, resolve, sep } from "node:path"
 import { CliError, isCliError, resolvePaths } from "@wirecat/cli-base"
 import { annotate } from "@wirecat/cli-base/commands"
 import {
@@ -216,7 +216,9 @@ const refuseSensitive = (root: string, env: NodeJS.ProcessEnv) => {
     return way === "" || (!way.startsWith("..") && !isAbsolute(way))
   }
   // The home folder, or one holding it, is never a mirror, even with the CLI's folders moved out of it.
-  if (own.some(holds) || holds(realOf(env.HOME ?? homedir())) || refusedPlace(root, IDENTITY, env))
+  // On Windows a drive root other than the home's drive holds none of the folders above, yet is a whole disk.
+  const driveRoot = real === parse(real).root
+  if (driveRoot || own.some(holds) || holds(realOf(env.HOME ?? homedir())) || refusedPlace(root, IDENTITY, env))
     throw new CliError(
       "validation_error",
       `${root} is not mirrored: the home folder, credential folders, the WireCat apps' folders and a folder holding ` +
