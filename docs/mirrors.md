@@ -7,21 +7,25 @@ changed on both sides is never overwritten without you.
 
 Use a mirror when you work on files with local tools, such as an editor, a script or an agent, and want them on the
 Disk too, without installing the Yandex Disk app. The files stay as they are: a PDF stays a PDF, a note stays a
-Markdown file.
+Markdown file. A mirror can also hold your whole Disk, as the Yandex Disk app does, with the folders you choose left
+out.
 
 **On this page:**
 
 1. [Connect a folder](#connect-a-folder)
-2. [The first sync](#the-first-sync)
-3. [Everyday syncs](#everyday-syncs)
-4. [A file changed on both sides](#a-file-changed-on-both-sides)
-5. [Deleted or only missing](#deleted-or-only-missing)
-6. [Where deleted files go](#where-deleted-files-go)
-7. [Earlier versions of a file](#earlier-versions-of-a-file)
-8. [A folder that was replaced](#a-folder-that-was-replaced)
-9. [Keep syncing in the background](#keep-syncing-in-the-background)
-10. [What an agent may do](#what-an-agent-may-do)
-11. [What is not synced](#what-is-not-synced)
+2. [The whole Disk](#the-whole-disk)
+3. [Leave folders out](#leave-folders-out)
+4. [The first sync](#the-first-sync)
+5. [Everyday syncs](#everyday-syncs)
+6. [A file changed on both sides](#a-file-changed-on-both-sides)
+7. [Deleted or only missing](#deleted-or-only-missing)
+8. [Many changes at once](#many-changes-at-once)
+9. [Where deleted files go](#where-deleted-files-go)
+10. [Earlier versions of a file](#earlier-versions-of-a-file)
+11. [A folder that was replaced](#a-folder-that-was-replaced)
+12. [Keep syncing in the background](#keep-syncing-in-the-background)
+13. [What an agent may do](#what-an-agent-may-do)
+14. [What is not synced](#what-is-not-synced)
 
 ## Connect a folder
 
@@ -34,12 +38,56 @@ ydisk personal mirrors add /Notes ~/notes
 The tool checks that both are folders and saves the pair. It copies nothing yet. `mirrors list` shows your mirrors
 with their ids; the commands below take an id when you have more than one mirror.
 
-Some folders are never mirrored, because a sync would send every file in them to the Disk: credential folders such as
-`~/.ssh`, `~/.gnupg` and the keyrings, browser profiles, the WireCat apps' folders, and any folder that holds
-`ydisk`'s own settings or state. `files upload` refuses the same places.
+Some folders are never mirrored, because a sync would send every file in them to the Disk: your home folder itself,
+credential folders such as `~/.ssh`, `~/.gnupg` and the keyrings, browser profiles, the WireCat apps' folders, and
+any folder that holds `ydisk`'s own settings or state. `files upload` refuses the same places. Mirror a folder of
+its own, such as `~/notes`.
 
 A mirror belongs to the account the profile was signed in to when you added it. A sync signed in to another account
 is refused.
+
+## The whole Disk
+
+Name `/` as the Disk folder, and a folder of its own on your computer:
+
+```sh
+ydisk personal mirrors add / ~/YandexDisk --ignore Photos --ignore "*.iso"
+ydisk personal mirrors preview
+ydisk personal mirrors sync
+```
+
+The sync reads the whole Disk with Yandex's flat file list, about one request per thousand files. A whole-Disk mirror
+works like any other mirror: everything on this page holds for it. Two things matter more on a big Disk:
+
+- **Free space.** Every sync, of any mirror, first adds up what it will download and the earlier versions it will
+  keep. It stops with `mirror.no-space` when that would leave too little free on the drive (a tenth of what it
+  writes, at least 100 MB and at most 1 GB), and says how much it needs. Leave big folders out to fit. The earlier
+  versions stay for 30 days.
+- **Size.** A mirror holds up to 100,000 files, not counting the ones you leave out.
+
+## Leave folders out
+
+An ignored path is left alone on both sides: it is not sent, not brought down and never deleted. Give the paths
+when you add the mirror (`--ignore`, repeated), or add more later. `mirrors list` shows the list. `--clear` empties
+it first, so `--clear` with `--ignore` keeps only the paths you give: that is how one path stops being ignored.
+
+```sh
+ydisk personal mirrors update 1a2b3c4d --ignore Photos --ignore "*.iso"
+ydisk personal mirrors update 1a2b3c4d --clear --ignore "*.iso"
+```
+
+- A pattern without `/` is a name at any depth: `node_modules`, `*.iso`, `Backups`.
+- A pattern with `/` is a path from the mirror's folder: `/Photos` (only the top one), `Work/2019`,
+  `Work/**/build`.
+- `*` and `?` match within one name. `**` matches any number of folders.
+
+Adding an exclusion deletes nothing on either side, now or later: the files stay where they are and the sync stops
+looking at them. Removing an exclusion syncs the path like a new folder: one-sided files are copied, identical files
+are taken as synced, and different files are conflicts. Nothing is deleted. `mirrors list` shows each mirror's
+exclusions.
+
+A file synced before, then moved on the Disk into an excluded folder, is moved here too, and then left alone. A file
+moved here into an excluded folder looks deleted to the sync: the Disk's copy goes to the Disk's trash.
 
 ## The first sync
 
@@ -89,9 +137,12 @@ A sync deletes a file on one side only when it can prove you deleted it on the o
 only when all of these hold:
 
 - The last sync saw the file.
-- The side where it is missing was read in full. A Disk folder the token cannot read, more than 10,000 files, or a
-  Disk that keeps changing while it is listed leaves the listing incomplete. The listing is read again, up to three
-  times, when anything on the Disk changed during it.
+- The side where it is missing was read in full. A Disk folder the token cannot read, or more than 100,000 files,
+  leaves the listing incomplete.
+- On the Disk side, the file is still missing when the sync asks for it by its path, after the listing. A listing
+  read page by page can skip a file when something else on the Disk changes meanwhile, as a phone uploading photos
+  does all the time. Asking for the file directly cannot skip it, so a file that is only missing from a listing is
+  never deleted. This also keeps deletions working on a Disk that never stands still.
 - That side's folder is still the same folder: the Disk folder has the same id it had at the first sync, and the
   local folder exists, is the same folder and is not empty. An empty local folder may be a drive that is not
   mounted.
@@ -99,15 +150,30 @@ only when all of these hold:
 A file that is only missing, for any other reason, is reported under `unknown`, and nothing is deleted for it. A
 missing Disk folder stops the whole mirror with an error, and nothing is deleted.
 
-A sync stops before it changes anything when it would delete more than 50 files, or more than a quarter of them
-(from 3 files up). Check the list with `mirrors preview`, then allow the number:
-
-```sh
-ydisk personal mirrors sync 1a2b3c4d --allow-deletions 60
-```
-
 A file renamed or moved on the Disk is renamed here too: the Disk keeps a file's id across a move. A file renamed
 here is sent as a new file, and the old name goes to the Disk's trash.
+
+## Many changes at once
+
+A sync stops before it changes anything, on either side, when it would:
+
+- delete more than 10 files, or
+- replace more than 50 files that already exist, as an editor rewriting every file or ransomware encrypting the
+  folder would.
+
+This holds however big the mirror is. The error names the counts and the exact command that allows them. Check the
+list first:
+
+```sh
+ydisk personal mirrors preview 1a2b3c4d
+ydisk personal mirrors sync 1a2b3c4d --allow-deletions 40 --replace
+```
+
+`--allow-deletions` allows up to that many deletions, `--replace` any number of replacements, for that one run. Each
+replaced file is kept as a version first. With more than one mirror, both need the mirror's id, so an approval never
+covers another mirror. A stopped mirror does not hold up the others: they sync
+as usual. `mirrors watch` reports the stop again at every cycle that syncs the mirror, until you allow the run or put
+the files back.
 
 ## Where deleted files go
 
@@ -161,7 +227,8 @@ ydisk personal mirrors watch
 
 `watch` syncs at start, then again a few seconds after you save a file, and when the Disk changed. It asks the Disk
 for its revision every 60 seconds (`--every` to change it, at least 10 s): one small request, and the folder is read
-again only when the revision moved. Stop it with Ctrl-C, or give it a `--timeout`.
+again only when the revision moved. Stop it with Ctrl-C, or give it a `--timeout`. A mirror the guard stopped (see
+[many changes at once](#many-changes-at-once)) is reported at every cycle that syncs it, never skipped in silence.
 
 A replace or a deletion asks for `files.delete` first (see below). A watch left running without a terminal cannot
 answer, so start it with `--yes`, or allow `files.delete` for the profile.
@@ -178,16 +245,17 @@ With `files.delete` set to `deny`, a sync still sends and brings down new files,
 it skipped under `errors`. `YDISK_READ_ONLY=1` refuses a sync; `mirrors preview` and `mirrors status` still work.
 
 Over MCP an agent may run `mirrors list`, `mirrors status`, `mirrors preview` and `mirrors sync`, but not
-`--allow-deletions` or `--repin`. Over MCP nobody can answer a question, so a level at `ask` lets the write through:
-set `files.delete` to `deny` for an agent that should not replace or delete files. Adding or removing a mirror,
-`versions` and `watch` are for you only. See [connect your agent](mcp.md#decide-what-the-agent-may-change).
+`--allow-deletions`, `--replace` or `--repin`: only you approve many changes at once. Over MCP nobody can
+answer a question, so a level at `ask` lets the write through: set `files.delete` to `deny` for an agent that should
+not replace or delete files. Adding, changing or removing a mirror, `versions` and `watch` are for you only. See [connect your agent](mcp.md#decide-what-the-agent-may-change).
 
 ## What is not synced
 
 - Hidden files and folders (a name starting with `.`), `node_modules`, and editor leftovers (`~$name`, names
   ending in `~`, `.swp` or `.tmp`), on both sides. Such a Disk folder is not even listed.
 - Symbolic links. A file under a link is never deleted because of it.
-- A mirror of more than 10,000 files.
+- Paths you [left out](#leave-folders-out).
+- A mirror of more than 100,000 files.
 - Empty folders.
 
 `mirrors remove <id>` forgets the pair. Nothing on the Disk or in the local folder changes, and the kept versions

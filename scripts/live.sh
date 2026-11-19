@@ -105,24 +105,47 @@ node -e '
   if (!after.item?.path) fail("a delete with a wrong md5 removed the file")' \
   "$work/probe-1.json" "$work/probe-2.json" "$work/rev-1.json" "$work/rev-2.json" "$work/del-wrong.json" \
   "$work/after-wrong.json" "$work/probe.txt"
+# The flat listing a whole-Disk mirror reads (GET /v1/disk/resources/files): Yandex's docs show neither sha256 nor
+# resource_id on its items and name no largest page, so both are checked here, with limit and offset.
+raw resources-files-list --limit 1000 >"$work/flat-all.json"
+raw resources-files-list --limit 1 --offset 1 >"$work/flat-one.json"
+node -e '
+  const fs = require("fs")
+  const page = (f) => { const body = JSON.parse(fs.readFileSync(f, "utf8")); return body.item ?? body }
+  const [all, one] = process.argv.slice(1, 3).map(page)
+  const fail = (message) => { throw new Error(message) }
+  if (!Array.isArray(all.items) || all.items.length < 2)
+    fail(`the flat listing returned too few files: ${JSON.stringify(all).slice(0, 300)}`)
+  const bad = all.items.find((item) => !item.sha256 || !item.resource_id || !String(item.path).startsWith("disk:/"))
+  if (bad) fail(`a flat listing item lacks sha256, resource_id or a disk: path: ${JSON.stringify(bad)}`)
+  if (one.items?.length !== 1 || one.items[0].path !== all.items[1].path)
+    fail("the flat listing does not honour limit and offset")' \
+  "$work/flat-all.json" "$work/flat-one.json"
 "${cli[@]}" live files delete "/ydisk-live/probe-$stamp.txt" --yes --json >/dev/null
 # A two-way mirror of a fresh folder under /ydisk-live: sync up, edit on the Disk, sync down, delete on each side, and
-# find each deletion in the other side's trash.
+# find each deletion in the other side's trash. Its folder skip/ is excluded: the exact lists below show that nothing in
+# it is sent, brought down or trashed on either side.
 mirror="/ydisk-live/mirror-$stamp"
 mkdir -p "$work/mirror"
 echo "mirror a $stamp" >"$work/mirror/a.txt"
 echo "mirror b $stamp" >"$work/mirror/b.txt"
+mkdir -p "$work/mirror/skip"
+echo "excluded here $stamp" >"$work/mirror/skip/c.txt"
 "${cli[@]}" live files create "$mirror" --json >/dev/null
+"${cli[@]}" live files create "$mirror/skip" --json >/dev/null
+echo "excluded there $stamp" >"$work/d.txt"
+"${cli[@]}" live files upload "$work/d.txt" --folder "$mirror/skip" --name d.txt --json >/dev/null
 # A failed run leaves no mirror folder behind: it goes to the trash like the rest.
 trap '"${cli[@]}" live files delete "$mirror" --yes --json >/dev/null 2>&1 || true
   "${cli[@]}" live session end --json >/dev/null 2>&1 || true; rm -rf "$work"' EXIT
-"${cli[@]}" live mirrors add "$mirror" "$work/mirror" --json >"$work/m-add.json"
+"${cli[@]}" live mirrors add "$mirror" "$work/mirror" --ignore skip --json >"$work/m-add.json"
 id=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).item.id)' "$work/m-add.json")
 "${cli[@]}" live mirrors sync "$id" --json >"$work/m-up.json"
 echo "edited on the disk $stamp" >"$work/edit.txt"
 "${cli[@]}" live files upload "$work/edit.txt" --folder "$mirror" --name a.txt --replace --yes --json >/dev/null
 "${cli[@]}" live mirrors sync "$id" --yes --json >"$work/m-down.json"
 grep -q "edited on the disk $stamp" "$work/mirror/a.txt"
+test ! -e "$work/mirror/skip/d.txt"
 "${cli[@]}" live mirrors versions list "$id" a.txt --json >"$work/m-versions.json"
 rm "$work/mirror/b.txt"
 "${cli[@]}" live files delete "$mirror/a.txt" --yes --json >/dev/null
@@ -153,4 +176,4 @@ trap '"${cli[@]}" live session end --json >/dev/null 2>&1 || true; rm -rf "$work
 "${cli[@]}" live doctor --json >/dev/null
 
 "${cli[@]}" live session end --json >/dev/null
-echo "live check passed: describe format 2, sign-in, files list, folders browse, download, upload, move and delete, the sync facts, sync, search, a two-way mirror, doctor, sign-out"
+echo "live check passed: describe format 2, sign-in, files list, folders browse, download, upload, move and delete, the sync facts, sync, search, the flat listing, a two-way mirror with an exclusion, doctor, sign-out"

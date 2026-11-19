@@ -2,7 +2,8 @@ import { createHash } from "node:crypto"
 import { posix } from "node:path"
 
 // A strict fake of the Yandex Disk REST API, from https://yandex.ru/dev/disk-api/doc/en/reference/meta (listing),
-// …/content (download link), …/upload (upload link), …/delete, …/create-folder and …/capacity (the disk's revision).
+// …/content (download link), …/upload (upload link), …/delete, …/create-folder, …/capacity (the disk's revision) and
+// …/all-files (the flat listing: every file, alphabetical, `items` with `limit` and `offset`, no total).
 // It refuses an unknown path, method or parameter, a call without `OAuth <token>`, and a download or upload that
 // carries the token. Visibly fake data only (WC-TEST-8).
 
@@ -40,6 +41,10 @@ export interface FakeDisk {
   beforeWrite?: (method: string, path: string) => void
   /** Runs before each page of a folder is read, as another device's change in the middle of a listing. */
   beforePage?: (path: string, offset: number) => void
+  /** Runs before each page of the flat listing is read. */
+  beforeFilesPage?: (offset: number) => void
+  /** The flat listing returns at most this many files a page, whatever `limit` asks: Yandex documents no maximum. */
+  filesPageCap?: number
   /** Uploads answer 202 and land only once their operation is polled this many times more. */
   acceptUploads?: number
   revision(): number
@@ -51,6 +56,7 @@ const json = (status: number, body: unknown) =>
 const ALLOWED: Record<string, readonly string[]> = {
   "GET /v1/disk": ["fields"],
   "GET /v1/disk/resources": ["path", "limit", "offset", "sort", "fields"],
+  "GET /v1/disk/resources/files": ["limit", "offset", "fields", "media_type"],
   "GET /v1/disk/resources/download": ["path"],
   "GET /v1/disk/resources/upload": ["path", "overwrite"],
   "PUT /v1/disk/resources": ["path"],
@@ -166,6 +172,15 @@ export const fakeDisk = (): FakeDisk => {
         return url.searchParams.get("fields") === "revision"
           ? json(200, { revision })
           : json(200, { total_space: 1, used_space: 0, user: { uid: "1000", login: "test-person" } })
+      if (url.pathname === "/v1/disk/resources/files") {
+        const offset = Number(url.searchParams.get("offset") ?? 0)
+        const limit = Math.min(Number(url.searchParams.get("limit") ?? 20), disk.filesPageCap ?? Infinity)
+        disk.beforeFilesPage?.(offset)
+        const files = [...nodes.values()]
+          .filter((node) => node.type === "file")
+          .sort((a, b) => a.path.localeCompare(b.path))
+        return json(200, { items: files.slice(offset, offset + limit).map(resource), limit, offset })
+      }
       const path = url.searchParams.get("path") ?? ""
       const status = denied.get(path)
       if (status) return json(status, { error: status === 403 ? "DiskForbiddenError" : "DiskNotFoundError" })

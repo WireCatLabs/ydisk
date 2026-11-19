@@ -30,18 +30,26 @@ const Listing = v.object({
   ...Resource.entries,
   _embedded: v.optional(v.object({ items: v.array(Resource), total: v.optional(v.number()) })),
 })
+const FlatList = v.object({ items: v.array(Resource) })
 const Link = v.object({ href: v.string() })
 const User = v.object({ user: v.object({ uid: v.string() }) })
 const Revision = v.object({ revision: v.number() })
 const Operation = v.object({ status: v.string() })
 
-/** A listing walked while the Disk changed is walked again this many times before it is called incomplete. */
-const WALKS = 3
 /** How long an upload the Disk answered 202 is waited for, polling its operation from 250 ms up to 5 s apart. */
 const UPLOAD_WAIT_MS = 120_000
 
-/** A mirror holds at most this many files; past it the listing is incomplete and proves no deletion. */
-export const MAX_MIRROR_FILES = 10_000
+/**
+ * A mirror holds at most this many files, excluded ones not counted; past it the listing is incomplete and proves no
+ * deletion. Its state is about 300 bytes a file, so 100,000 files keep a 30 MB state.
+ */
+export const MAX_MIRROR_FILES = 100_000
+/**
+ * Files asked for per page of the flat listing. Yandex documents no maximum (https://yandex.ru/dev/disk-api/doc/ru/
+ * reference/all-files), so the offset moves by what a page returned and only an empty page ends the listing.
+ */
+const FLAT_PAGE = 1_000
+const ROOT = "disk:/"
 
 const statusOf = (error: unknown) => (isCliError(error) ? error.details?.status : undefined)
 
@@ -97,10 +105,18 @@ export const diskTarget = (api: Transport, links: FetchLike, signal?: AbortSigna
   const revisionOf = async () =>
     (await api.send({ method: "GET", path: "disk", query: { fields: "revision" } }, Revision)).revision
 
-  /** Every file under `top`, by offset pages: an entry that moves while the pages are read can be missed. */
-  const walk = async (top: Resource) => {
+  /** A failed page leaves the listing incomplete; a refused token, a stop or the rate limit ends the sync. */
+  const fatal = (error: unknown) =>
+    !isCliError(error) || ["authentication_error", "cancelled", "rate_limited"].includes(error.code)
+
+  /**
+   * Every file under `top`, by offset pages: an entry that moves while the pages are read can be missed, so the
+   * engine checks each file missing from it by its path before it deletes anything.
+   */
+  const walk = async (top: Resource, excluded: (path: string) => boolean) => {
     const prefix = prefixOf(top.path)
     const files: RemoteFile[] = []
+    let counted = 0
     const folders = [top.path]
     while (folders.length) {
       const folder = folders.shift() as string
@@ -112,23 +128,52 @@ export const diskTarget = (api: Transport, links: FetchLike, signal?: AbortSigna
             Listing,
           )
         } catch (error) {
-          // A folder the token cannot read, or one gone mid-walk, leaves the listing incomplete; a refused token or
-          // a stop ends the sync.
-          if (!isCliError(error) || ["authentication_error", "cancelled", "rate_limited"].includes(error.code))
-            throw error
+          if (fatal(error)) throw error
           return { files, complete: false }
         }
         const items = answer._embedded?.items ?? []
         for (const item of items) {
           if (skippedName(posix.basename(item.path))) continue
           if (item.type === "dir") folders.push(item.path)
-          else files.push(remoteFile(item, prefix))
+          else {
+            const file = remoteFile(item, prefix)
+            files.push(file)
+            if (!excluded(file.path)) counted++
+          }
         }
-        if (files.length > MAX_MIRROR_FILES) return { files, complete: false }
+        if (counted > MAX_MIRROR_FILES) return { files, complete: false }
         if (items.length < PAGE || (answer._embedded?.total ?? Number.POSITIVE_INFINITY) <= offset + PAGE) break
       }
     }
     return { files, complete: true }
+  }
+
+  /**
+   * Every file on the Disk from its flat, alphabetical listing: one request per thousand files instead of one per
+   * folder. A file met twice, as a page shifts while the Disk changes, is kept once.
+   */
+  const flat = async (excluded: (path: string) => boolean) => {
+    const found = new Map<string, RemoteFile>()
+    let counted = 0
+    const listing = (complete: boolean) => ({ files: [...found.values()], complete })
+    for (let offset = 0; ; ) {
+      let items: Resource[]
+      try {
+        const page = { method: "GET" as const, path: "disk/resources/files", query: { limit: FLAT_PAGE, offset } }
+        items = (await api.send(page, FlatList)).items
+      } catch (error) {
+        if (fatal(error)) throw error
+        return listing(false)
+      }
+      if (!items.length) return listing(true)
+      offset += items.length
+      for (const item of items) {
+        const file = remoteFile(item, ROOT)
+        if (item.type !== "file" || found.has(file.path) || file.path.split("/").some(skippedName)) continue
+        found.set(file.path, file)
+        if (!excluded(file.path) && ++counted > MAX_MIRROR_FILES) return listing(false)
+      }
+    }
   }
 
   /** Waits for an upload the Disk took with 202 to land, so the read after it sees the new file. */
@@ -165,22 +210,19 @@ export const diskTarget = (api: Transport, links: FetchLike, signal?: AbortSigna
   return {
     identity: async () => (await api.send({ method: "GET", path: "disk", query: { fields: "user" } }, User)).user.uid,
 
-    list: async (root) => {
+    list: async (root, _signal, options) => {
       const top = await read(root)
       if (!top) return undefined
       if (top.type !== "dir")
         throw new CliError("validation_error", `${root} is a file on ${SERVICE}, not a folder`, {
           reason: "mirror.not-folder",
         })
-      // The Disk's revision moves with every change on it: a walk it did not move under missed nothing.
-      for (let walks = 1; ; walks++) {
-        const before = await revisionOf()
-        const walked = await walk(top)
-        if (!walked.complete || (await revisionOf()) === before)
-          return { rootId: top.resource_id, files: walked.files, complete: walked.complete }
-        if (walks === WALKS) return { rootId: top.resource_id, files: walked.files, complete: false }
-      }
+      const excluded = options?.excluded ?? (() => false)
+      const listed = top.path === ROOT ? await flat(excluded) : await walk(top, excluded)
+      return { rootId: top.resource_id, ...listed }
     },
+
+    exists: async (path) => (await read(path)) !== undefined,
 
     download: async (path, into) => {
       const { href } = await api.send({ method: "GET", path: "disk/resources/download", query: { path } }, Link)

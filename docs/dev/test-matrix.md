@@ -7,7 +7,7 @@ ran it · ⛔ not tested offline, with the reason and where it is checked instea
 Measured from the test run (`coverage/argv.jsonl`), not searched for — see
 [TESTING.md](TESTING.md) for how, and for the states and failures that cut across commands.
 
-**164 ✅ · 168 ⛔ · 0 ❌** — 118 commands, 214 options.
+**169 ✅ · 168 ⛔ · 0 ❌** — 119 commands, 218 options.
 
 | Command | Option | | Note |
 |---|---|---|---|
@@ -128,6 +128,7 @@ Measured from the test run (`coverage/argv.jsonl`), not searched for — see
 | `files publish` |  | ✅ |  |
 | `files unpublish` |  | ✅ |  |
 | `mirrors add` |  | ✅ |  |
+| `mirrors add` | `--ignore` | ✅ |  |
 | `mirrors list` |  | ✅ |  |
 | `mirrors status` |  | ✅ |  |
 | `mirrors preview` |  | ✅ |  |
@@ -135,9 +136,13 @@ Measured from the test run (`coverage/argv.jsonl`), not searched for — see
 | `mirrors sync` |  | ✅ |  |
 | `mirrors sync` | `--keep` | ✅ |  |
 | `mirrors sync` | `--allow-deletions` | ✅ |  |
+| `mirrors sync` | `--replace` | ✅ |  |
 | `mirrors sync` | `--repin` | ✅ |  |
 | `mirrors watch` |  | ✅ |  |
 | `mirrors watch` | `--every` | ✅ |  |
+| `mirrors update` |  | ✅ |  |
+| `mirrors update` | `--ignore` | ✅ |  |
+| `mirrors update` | `--clear` | ✅ |  |
 | `mirrors remove` |  | ✅ |  |
 | `mirrors versions list` |  | ✅ |  |
 | `mirrors versions restore` |  | ✅ |  |

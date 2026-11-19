@@ -839,6 +839,18 @@
     {
       "path": [
         "mirrors",
+        "update"
+      ],
+      "summary": "add paths a mirror ignores, or clear the list; nothing is deleted on either side",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "mirrors.update"
+    },
+    {
+      "path": [
+        "mirrors",
         "remove"
       ],
       "summary": "stop mirroring a folder; nothing on either side changes",
