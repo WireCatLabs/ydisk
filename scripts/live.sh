@@ -107,6 +107,9 @@ mkdir -p "$work/mirror"
 echo "mirror a $stamp" >"$work/mirror/a.txt"
 echo "mirror b $stamp" >"$work/mirror/b.txt"
 "${cli[@]}" live files create "$mirror" --json >/dev/null
+# A failed run leaves no mirror folder behind: it goes to the trash like the rest.
+trap '"${cli[@]}" live files delete "$mirror" --yes --json >/dev/null 2>&1 || true
+  "${cli[@]}" live session end --json >/dev/null 2>&1 || true; rm -rf "$work"' EXIT
 "${cli[@]}" live mirrors add "$mirror" "$work/mirror" --json >"$work/m-add.json"
 id=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).item.id)' "$work/m-add.json")
 "${cli[@]}" live mirrors sync "$id" --json >"$work/m-up.json"
@@ -118,7 +121,8 @@ grep -q "edited on the disk $stamp" "$work/mirror/a.txt"
 rm "$work/mirror/b.txt"
 "${cli[@]}" live files delete "$mirror/a.txt" --yes --json >/dev/null
 "${cli[@]}" live mirrors sync "$id" --yes --json >"$work/m-delete.json"
-raw trash-resources-list --path "trash:/" --limit 1000 >"$work/m-trash.json"
+# Every page of the trash: the docs name no sort by deletion time, so a first page alone misses b.txt in a full trash.
+raw trash-resources-list --path "trash:/" --limit 1000 --all >"$work/m-trash.json"
 node -e '
   const fs = require("fs")
   const read = (f) => JSON.parse(fs.readFileSync(f, "utf8"))
@@ -139,6 +143,7 @@ node -e '
   "$mirror" "$work/mirror"
 "${cli[@]}" live mirrors remove "$id" --json >/dev/null
 "${cli[@]}" live files delete "$mirror" --yes --json >/dev/null
+trap '"${cli[@]}" live session end --json >/dev/null 2>&1 || true; rm -rf "$work"' EXIT
 "${cli[@]}" live doctor --json >/dev/null
 
 "${cli[@]}" live session end --json >/dev/null

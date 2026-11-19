@@ -89,8 +89,9 @@ A sync deletes a file on one side only when it can prove you deleted it on the o
 only when all of these hold:
 
 - The last sync saw the file.
-- The side where it is missing was read in full. A Disk folder the token cannot read, or more than 10,000 files,
-  leaves the listing incomplete.
+- The side where it is missing was read in full. A Disk folder the token cannot read, more than 10,000 files, or a
+  Disk that keeps changing while it is listed leaves the listing incomplete. The listing is read again, up to three
+  times, when anything on the Disk changed during it.
 - That side's folder is still the same folder: the Disk folder has the same id it had at the first sync, and the
   local folder exists, is the same folder and is not empty. An empty local folder may be a drive that is not
   mounted.
@@ -98,8 +99,8 @@ only when all of these hold:
 A file that is only missing, for any other reason, is reported under `unknown`, and nothing is deleted for it. A
 missing Disk folder stops the whole mirror with an error, and nothing is deleted.
 
-A sync that would delete more than 2 files stops before it changes anything when the count is over 50, or over a
-quarter of the mirror's files. Check the list with `mirrors preview`, then allow the number:
+A sync stops before it changes anything when it would delete more than 50 files, or more than a quarter of them
+(from 3 files up). Check the list with `mirrors preview`, then allow the number:
 
 ```sh
 ydisk personal mirrors sync 1a2b3c4d --allow-deletions 60
