@@ -974,7 +974,7 @@ ydisk identities link <document> <disk-id> <person>
 
 ## `ydisk files`
 
-the files on Yandex Disk, live: list, read, download, upload and change them
+the files on Yandex Disk, live: list, read, download, upload, change, serve
 
 ### `ydisk files list`
 
@@ -1176,6 +1176,24 @@ ydisk files unpublish <path>
 | `path` | required | Disk path, like /Documents/plan.pdf or disk:/Documents/plan.pdf. |
 
 **Example:** `ydisk personal files unpublish /Documents/plan.pdf`
+
+### `ydisk files serve`
+
+show a Disk folder, or the whole Disk, as a read-only folder on this computer: it serves the folder over WebDAV on 127.0.0.1 behind a random address, which the system's own client mounts; nothing can be written, renamed or deleted through it. Runs until Ctrl-C or --timeout
+
+```sh
+ydisk files serve [path] [options]
+```
+
+| Argument | | What it is |
+|---|---|---|
+| `path` | optional | the Disk folder to show, like /Documents; the whole Disk without it. |
+
+| Option | What it does |
+|---|---|
+| `--port <port>` | the local port to serve on; a free one without it. |
+
+**Example:** `ydisk personal files serve`, `ydisk personal files serve /Documents --port 8090`
 
 ## `ydisk mirrors`
 

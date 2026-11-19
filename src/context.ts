@@ -14,6 +14,7 @@ import type { Command } from "commander"
 import { configuration, permissions } from "./config.js"
 import { API_HOSTS, DESKTOP, IDENTITY, SERVICE } from "./identity.js"
 import { diskTarget } from "./yandex/mirror-target.js"
+import { diskMount } from "./yandex/mount.js"
 import { diskSource } from "./yandex/source.js"
 import { type Transport, transport } from "./yandex/transport.js"
 import { diskWrites } from "./yandex/writes.js"
@@ -91,6 +92,8 @@ export const diskFor = (command: Command, events: EventSink | undefined, token: 
     ...diskSource(api, links, environment.signal),
     ...diskWrites(api, links, environment.signal),
     target: diskTarget(api, links, environment.signal),
+    mount: (root: string, onTruncated?: (path: string) => void) =>
+      diskMount({ api, links, root, signal: environment.signal, ...(onTruncated ? { onTruncated } : {}) }),
   }
 }
 

@@ -26,6 +26,7 @@ import { DELETE_KEY, SHARE_KEY } from "../config.js"
 import { contextOf, type Disk, diskFor, tokenOf, withDisk, writeGuard } from "../context.js"
 import { IDENTITY } from "../identity.js"
 import { type DiskFile, diskPath, PAGE, skipReason, trashPath } from "../yandex/source.js"
+import { serveCommand } from "./mount.js"
 
 const CLI = IDENTITY.command
 
@@ -315,7 +316,7 @@ const simple = (
 
 export const filesCommand = (): Command =>
   annotate(new Command("files"), { effects: REMOTE_READ })
-    .description("the files on Yandex Disk, live: list, read, download, upload and change them")
+    .description("the files on Yandex Disk, live: list, read, download, upload, change, serve")
     .addCommand(listCommand())
     .addCommand(showCommand())
     .addCommand(downloadCommand())
@@ -362,3 +363,4 @@ export const filesCommand = (): Command =>
         act: (disk, path) => disk.unpublish(path),
       }),
     )
+    .addCommand(serveCommand())

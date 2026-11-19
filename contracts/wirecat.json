@@ -766,6 +766,18 @@
     },
     {
       "path": [
+        "files",
+        "serve"
+      ],
+      "summary": "show a Disk folder as a read-only folder on this computer, until Ctrl-C",
+      "effects": {
+        "remote": "read",
+        "local": "read"
+      },
+      "permission": "files.serve"
+    },
+    {
+      "path": [
         "mirrors",
         "add"
       ],

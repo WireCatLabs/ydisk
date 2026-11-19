@@ -41,6 +41,9 @@
 - **A folder on your computer that stays in step with the Disk.** Edit files with your own tools; a mirror sends
   your changes up and brings the Disk's down. Mirror one folder or the whole Disk, and leave out the folders you
   choose. A deleted file goes to a trash, never away, and many deletions at once wait for your approval.
+- **The Disk as a folder in your file manager, read-only.** `ydisk personal files serve` shows a Disk folder next
+  to your own, on Linux, macOS and Windows, with nothing to install. Open and read any file there; nothing can delete
+  or change the Disk through it ([mount](https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/mount.md)).
 - **See the whole picture.** The copies sit next to your messages, mail, notes and meetings from the other WireCat
   tools, so one search covers all of them.
 
@@ -174,6 +177,14 @@ ydisk personal mirrors watch                          # keep syncing until Ctrl-
 ```
 
 More: [mirrors](https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/mirrors.md)
+
+### Open the Disk as a read-only folder
+
+```sh
+ydisk personal files serve /Documents                 # prints the address and how to mount it; Ctrl-C ends it
+```
+
+More: [mount](https://github.com/WireCatLabs/ydisk-cli/blob/main/docs/mount.md)
 
 ### The whole Disk API
 
