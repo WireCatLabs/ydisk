@@ -68,6 +68,8 @@ const FILES_CHECKS: Readonly<Record<string, readonly (string | ConditionalKey)[]
   "files unpublish": [SHARE_KEY],
   "mirrors sync": MIRROR_CHECKS,
   "mirrors watch": MIRROR_CHECKS,
+  // It reads every file it shows, as files download does, so a profile that denies that also refuses it.
+  "files serve": ["files.download"],
 }
 
 const api = serviceApiPermissions(API)

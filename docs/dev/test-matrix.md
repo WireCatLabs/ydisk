@@ -7,7 +7,7 @@ ran it · ⛔ not tested offline, with the reason and where it is checked instea
 Measured from the test run (`coverage/argv.jsonl`), not searched for — see
 [TESTING.md](TESTING.md) for how, and for the states and failures that cut across commands.
 
-**169 ✅ · 168 ⛔ · 0 ❌** — 119 commands, 218 options.
+**171 ✅ · 168 ⛔ · 0 ❌** — 120 commands, 219 options.
 
 | Command | Option | | Note |
 |---|---|---|---|
@@ -127,6 +127,8 @@ Measured from the test run (`coverage/argv.jsonl`), not searched for — see
 | `files restore` |  | ✅ |  |
 | `files publish` |  | ✅ |  |
 | `files unpublish` |  | ✅ |  |
+| `files serve` |  | ✅ |  |
+| `files serve` | `--port` | ✅ |  |
 | `mirrors add` |  | ✅ |  |
 | `mirrors add` | `--ignore` | ✅ |  |
 | `mirrors list` |  | ✅ |  |

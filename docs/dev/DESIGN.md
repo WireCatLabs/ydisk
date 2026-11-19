@@ -92,9 +92,26 @@ the commands. Settled on 2026-11-18 by live probes, asserted by `scripts/live.sh
 - **MCP:** `list`, `status`, `preview` and `sync`. `add`, `remove` and `versions` are `mcp: false`; `watch` is persistent;
   `--allow-deletions` and `--repin` are owner-only options.
 
+## Read-only folder (`files serve`)
+
+- **Read-only, by the owner's choice (2026-11-19).** A writable mount would let any program, or an `rm -rf`, delete
+  Disk files and go around the mirrors' proven-deletion rule, versions and mass-deletion guard. Writes are a later,
+  separate decision. The source handed to cli-core's mount (`src/yandex/mount.ts`) has no write method, and the server
+  refuses every write method.
+- **A local WebDAV bridge over the REST API, not Yandex's WebDAV.** `webdav.yandex.ru` works only on a Yandex 360
+  plan, and an OS client signs in to it with an app password, which can also write
+  ([docs](https://yandex.ru/dev/disk/doc/ru/concepts/quickstart)). The bridge uses the profile's OAuth token, any plan,
+  and cannot write. The shared server is cli-core's `@wirecat/cli-core/mount`, so drive and notion can mount the same
+  way.
+- **`files serve`, not `mount`.** A new root word needs a vocabulary change the owner approves first (WC-CMD-2,
+  WC-CMD-4); `serve` is in the vocabulary. It is `lifetime: "persistent"` (WC-CMD-18), so it is never offered over MCP.
+  It also checks `files.download`, since it reads every file it shows.
+- **Ranges:** Yandex's docs do not say a download link serves a `Range`; it is forwarded, and a 200 answer is passed
+  on whole. Download links are kept a minute per file and version.
+
 ## What is hand-written
 
-`src/yandex/` (transport, source, mirror target), `src/commands/{library,files,mirrors}.ts`, `src/context.ts` and the tests with their fakes
+`src/yandex/` (transport, source, mirror target), `src/commands/{library,files,mirrors,mount}.ts`, `src/context.ts` and the tests with their fakes
 (`src/testing/fake-disk.ts`, an in-memory Disk; `src/testing/disk-api.ts`, cli-base's strict fake from the spec).
 The documents commands, the sync engine, the store, search and MCP are cli-core's; the `api` group is generated.
 
