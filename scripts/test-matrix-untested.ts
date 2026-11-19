@@ -44,7 +44,7 @@ export const UNTESTED: { command: string; option?: string; reason: string }[] = 
   ...["--scope", "--tab", "--yes"].map((option) => ({ command: "memories extract", option, reason: MODEL })),
   { command: "api *", reason: GENERATED },
   ...generatedOptions.map((option) => ({ command: "api *", option, reason: GENERATED })),
-  ...["folders list", "folders remove", "search"].map((command) => ({ command, reason: SHARED_DOCUMENTS })),
+  ...["folders remove", "search"].map((command) => ({ command, reason: SHARED_DOCUMENTS })),
   ...["--limit", "--rescan"].map((option) => ({ command: "sync", option, reason: SHARED_DOCUMENTS })),
   ...["--limit", "--page", "--exact"].map((option) => ({ command: "search", option, reason: SHARED_DOCUMENTS })),
   ...shared,

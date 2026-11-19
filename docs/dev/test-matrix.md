@@ -7,7 +7,7 @@ ran it · ⛔ not tested offline, with the reason and where it is checked instea
 Measured from the test run (`coverage/argv.jsonl`), not searched for — see
 [TESTING.md](TESTING.md) for how, and for the states and failures that cut across commands.
 
-**149 ✅ · 169 ⛔ · 0 ❌** — 109 commands, 209 options.
+**164 ✅ · 168 ⛔ · 0 ❌** — 118 commands, 214 options.
 
 | Command | Option | | Note |
 |---|---|---|---|
@@ -24,7 +24,7 @@ Measured from the test run (`coverage/argv.jsonl`), not searched for — see
 | `account remove` | `--delete-data` | ✅ |  |
 | `account remove` | `--dry-run` | ✅ |  |
 | `folders add` |  | ✅ |  |
-| `folders list` |  | ⛔ | cli-core's shared documents command, mounted by documentLibraryCommands; cli-core's documents tests and documentCommandsContract drive it, and src/library.test.ts runs the contract over this CLI |
+| `folders list` |  | ✅ |  |
 | `folders browse` |  | ✅ |  |
 | `folders browse` | `--folder` | ✅ |  |
 | `folders browse` | `--cursor` | ✅ |  |
@@ -127,6 +127,20 @@ Measured from the test run (`coverage/argv.jsonl`), not searched for — see
 | `files restore` |  | ✅ |  |
 | `files publish` |  | ✅ |  |
 | `files unpublish` |  | ✅ |  |
+| `mirrors add` |  | ✅ |  |
+| `mirrors list` |  | ✅ |  |
+| `mirrors status` |  | ✅ |  |
+| `mirrors preview` |  | ✅ |  |
+| `mirrors preview` | `--keep` | ✅ |  |
+| `mirrors sync` |  | ✅ |  |
+| `mirrors sync` | `--keep` | ✅ |  |
+| `mirrors sync` | `--allow-deletions` | ✅ |  |
+| `mirrors sync` | `--repin` | ✅ |  |
+| `mirrors watch` |  | ✅ |  |
+| `mirrors watch` | `--every` | ✅ |  |
+| `mirrors remove` |  | ✅ |  |
+| `mirrors versions list` |  | ✅ |  |
+| `mirrors versions restore` |  | ✅ |  |
 | `store info` |  | ✅ |  |
 | `api list` |  | ✅ |  |
 | `api show` |  | ⛔ | generated from Yandex Disk's Swagger 1.2; src/api.test.ts sends every operation through cli-base's strict fake, and pnpm generate:check checks the generation |

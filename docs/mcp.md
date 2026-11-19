@@ -95,6 +95,11 @@ agent:
   makes a permission stricter for that server, never looser:
   `ydisk personal mcp add claude-code --allow-writes --permission files.delete=deny`.
 
+An agent may sync the [mirrors](mirrors.md) you added (`mirrors list`, `mirrors status`, `mirrors preview`,
+`mirrors sync`). It cannot
+add or remove one, run `mirrors watch`, or pass `--allow-deletions` or `--repin`. A sync that replaces or deletes a
+file checks `files.delete`, so `deny` there keeps an agent's syncs to new files only.
+
 Over MCP an agent reads a file's text with `files download` but cannot save a file to a path on your computer. Every
 permission key is in [settings](configuration.md#permissions), and what reaches your disk and the network is in
 [security](security.md).

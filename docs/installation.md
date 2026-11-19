@@ -40,7 +40,7 @@ Russian, so the labels below are given in Russian too.
 1. Open [oauth.yandex.ru/client/new](https://oauth.yandex.ru/client/new/) and sign in to Yandex with the account
    whose Disk you want to use. If Yandex shows a choice of app type, choose **For API access or debugging** («Для
    доступа к API или отладки»).
-2. Enter any name for the app («Название вашего сервиса»), such as `ydisk on my laptop`, and your email («Контактная
+2. Enter any name for the app («Название вашего сервиса»), such as `My laptop`, and your email («Контактная
    почта»).
 3. Under data access («Доступ к данным»), add the Yandex Disk rights the tool needs:
    - `cloud_api:disk.read`, read the whole Disk («Чтение всего Диска»).

@@ -36,6 +36,7 @@ describe("each remote command runs inside cli-core's run", () => {
       "files restore": ["personal", "files", "restore", "trash:/plan.txt"],
       "files publish": ["personal", "files", "publish", "/plan.txt", "--yes"],
       "files unpublish": ["personal", "files", "unpublish", "/plan.txt", "--yes"],
+      "mirrors add": ["personal", "mirrors", "add", "/Work", scratch],
     },
     skip: {
       ...Object.fromEntries(
@@ -45,6 +46,11 @@ describe("each remote command runs inside cli-core's run", () => {
         ]),
       ),
       "mcp serve": "listens until stopped",
+      "mirrors sync":
+        "needs a saved mirror and a Disk that lists sha256, which the spec's fake lacks; it runs in contextOf().run, and src/mirrors.test.ts runs it against fake-disk",
+      "mirrors preview":
+        "the same listing as mirrors sync, writing nothing; src/mirrors.test.ts runs it against fake-disk",
+      "mirrors watch": "keeps running until stopped; src/mirrors.test.ts runs one cycle and its --timeout",
       "memories extract": "asks the configured model, not Yandex Disk; cli-core's shared command",
       doctor:
         "cli-core's appDoctorCommand answers --online outside a run of its own; drop this once core runs it inside",

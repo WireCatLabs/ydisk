@@ -766,6 +766,116 @@
     },
     {
       "path": [
+        "mirrors",
+        "add"
+      ],
+      "summary": "mirror a local folder and a Disk folder both ways",
+      "effects": {
+        "remote": "read",
+        "local": "write"
+      },
+      "permission": "mirrors.add"
+    },
+    {
+      "path": [
+        "mirrors",
+        "list"
+      ],
+      "summary": "list this profile's mirrors",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "mirrors.list"
+    },
+    {
+      "path": [
+        "mirrors",
+        "status"
+      ],
+      "summary": "show what the next sync would send from local changes",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "mirrors.status"
+    },
+    {
+      "path": [
+        "mirrors",
+        "preview"
+      ],
+      "summary": "list the Disk and show what mirrors sync would do",
+      "effects": {
+        "remote": "read",
+        "local": "read"
+      },
+      "permission": "mirrors.preview"
+    },
+    {
+      "path": [
+        "mirrors",
+        "sync"
+      ],
+      "summary": "sync mirrors both ways once",
+      "effects": {
+        "remote": "write",
+        "local": "write"
+      },
+      "permission": "mirrors.sync"
+    },
+    {
+      "path": [
+        "mirrors",
+        "watch"
+      ],
+      "summary": "keep syncing both ways until Ctrl-C or --timeout",
+      "effects": {
+        "remote": "write",
+        "local": "write"
+      },
+      "permission": "mirrors.watch"
+    },
+    {
+      "path": [
+        "mirrors",
+        "remove"
+      ],
+      "summary": "stop mirroring a folder; nothing on either side changes",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "mirrors.remove"
+    },
+    {
+      "path": [
+        "mirrors",
+        "versions",
+        "list"
+      ],
+      "summary": "list what syncs did to a mirrored file, oldest first",
+      "effects": {
+        "remote": "none",
+        "local": "read"
+      },
+      "permission": "mirrors.versions.list"
+    },
+    {
+      "path": [
+        "mirrors",
+        "versions",
+        "restore"
+      ],
+      "summary": "put a kept version back into the local folder",
+      "effects": {
+        "remote": "none",
+        "local": "write"
+      },
+      "permission": "mirrors.versions.restore"
+    },
+    {
+      "path": [
         "store",
         "info"
       ],
@@ -1306,7 +1416,9 @@
   "entities": {
     "selected_folder": {
       "fields": [
-        "id"
+        "id",
+        "name",
+        "path"
       ]
     },
     "document": {
@@ -1575,6 +1687,44 @@
       "app": "yandex-disk-cli",
       "env": "YDISK"
     },
-    "settings": null
+    "settings": null,
+    "accountRemove": {
+      "signOut": [
+        "{profile}",
+        "session",
+        "end",
+        "--record",
+        "--json"
+      ],
+      "remove": {
+        "minVersion": "0.0.0",
+        "keepData": [
+          "{profile}",
+          "account",
+          "remove",
+          "--keep-data",
+          "--record",
+          "--json"
+        ],
+        "deleteData": [
+          "{profile}",
+          "account",
+          "remove",
+          "--delete-data",
+          "--record",
+          "--json"
+        ],
+        "dryRun": "--dry-run",
+        "confirm": "--yes"
+      },
+      "removes": [
+        "signIn"
+      ],
+      "keeps": [
+        "settings",
+        "data",
+        "listed"
+      ]
+    }
   }
 }

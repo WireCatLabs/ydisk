@@ -7,11 +7,13 @@ import {
   type GlobalFlags,
   linkFetch,
   ProfileTokenStore,
+  terminalAsker,
 } from "@wirecat/cli-core/cli"
-import { Pacer, pacePathFor } from "@wirecat/cli-core/sends"
+import { type Asker, guardFor, keyedGuard, levelFor, Pacer, pacePathFor } from "@wirecat/cli-core/sends"
 import type { Command } from "commander"
-import { configuration } from "./config.js"
+import { configuration, permissions } from "./config.js"
 import { API_HOSTS, DESKTOP, IDENTITY, SERVICE } from "./identity.js"
+import { diskTarget } from "./yandex/mirror-target.js"
 import { diskSource } from "./yandex/source.js"
 import { type Transport, transport } from "./yandex/transport.js"
 import { diskWrites } from "./yandex/writes.js"
@@ -85,7 +87,11 @@ export const diskFor = (command: Command, events: EventSink | undefined, token: 
     timeoutMs: LINK_TIMEOUT_MS,
     ...(environment.fetch ? { fetch: environment.fetch } : {}),
   })
-  return { ...diskSource(api, links, environment.signal), ...diskWrites(api, links, environment.signal) }
+  return {
+    ...diskSource(api, links, environment.signal),
+    ...diskWrites(api, links, environment.signal),
+    target: diskTarget(api, links, environment.signal),
+  }
 }
 
 export type Disk = ReturnType<typeof diskFor>
@@ -104,4 +110,25 @@ export const tokenOf = (command: Command): string => {
 export const withDisk = <T>(command: Command, body: (disk: Disk) => Promise<T>): Promise<T> => {
   const token = tokenOf(command)
   return contextOf(command).run((events) => body(diskFor(command, events, token)))
+}
+
+/**
+ * The guard of a write under the command's own key and `extra` (WC-PERM-13): a key that denies refuses before anything
+ * is asked, and one question names every key at `ask`, once per guard.
+ */
+export const writeGuard = (command: Command, extra: readonly string[], ask: Asker = terminalAsker(command)) => {
+  const { settings, env, renderer } = contextOf(command)
+  return keyedGuard(
+    (ask) =>
+      guardFor(
+        IDENTITY,
+        { ...settings, sendsPerHour: Number.MAX_SAFE_INTEGER, permissionDefaults: permissions.defaults },
+        renderer.warn,
+        env,
+        ask,
+      ),
+    ask,
+    (key) => levelFor(settings.permissions, key, permissions.defaults).level,
+    extra,
+  )
 }

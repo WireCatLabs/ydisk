@@ -17,22 +17,13 @@ import {
   REMOTE_READ,
   REMOTE_WRITE,
   renderAnswer,
-  terminalAsker,
   writesFileOnlyWith,
 } from "@wirecat/cli-core/cli"
 import { fileText } from "@wirecat/cli-core/documents"
-import {
-  guardedWrite,
-  guardFor,
-  keyedGuard,
-  levelFor,
-  newOperationId,
-  readUpload,
-  uploadBlob,
-} from "@wirecat/cli-core/sends"
+import { guardedWrite, newOperationId, readUpload, uploadBlob } from "@wirecat/cli-core/sends"
 import { Command } from "commander"
-import { DELETE_KEY, permissions, SHARE_KEY } from "../config.js"
-import { contextOf, type Disk, diskFor, tokenOf, withDisk } from "../context.js"
+import { DELETE_KEY, SHARE_KEY } from "../config.js"
+import { contextOf, type Disk, diskFor, tokenOf, withDisk, writeGuard } from "../context.js"
 import { IDENTITY } from "../identity.js"
 import { type DiskFile, diskPath, PAGE, skipReason, trashPath } from "../yandex/source.js"
 
@@ -55,25 +46,11 @@ const row = (file: DiskFile) => ({
  */
 const write = async <T>(command: Command, extra: readonly string[], act: (disk: Disk) => Promise<T>) => {
   const context = contextOf(command)
-  const { settings, env, renderer } = context
   // Read before any question: a profile with no sign-in fails before the owner is asked anything.
   const token = tokenOf(command)
   const key = commandPath(command).replaceAll(" ", ".")
   const operationId = newOperationId()
-  const levelOf = (one: string) => levelFor(settings.permissions, one, permissions.defaults).level
-  const guard = keyedGuard(
-    (ask) =>
-      guardFor(
-        IDENTITY,
-        { ...settings, sendsPerHour: Number.MAX_SAFE_INTEGER, permissionDefaults: permissions.defaults },
-        renderer.warn,
-        env,
-        ask,
-      ),
-    terminalAsker(command),
-    levelOf,
-    extra,
-  )
+  const guard = writeGuard(command, extra)
   const request = { chatId: null, kind: "edit" as const, key, operationId }
   guard.refuse(request)
   try {

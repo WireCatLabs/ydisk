@@ -5,7 +5,8 @@
 #   scripts/live.sh < token-file
 # It creates /ydisk-live and its live-check.txt (holding the word wirecatlive) when they are missing. It reads, then
 # uploads one temporary file into /ydisk-live, moves it and deletes it to the trash: the download and
-# upload confirm the hosts the docs name, and the move confirms that a file keeps its resource_id.
+# upload confirm the hosts the docs name, and the move confirms that a file keeps its resource_id. A mirror step
+# syncs a fresh folder /ydisk-live/mirror-<time> both ways and deletes it to the trash at the end.
 # Needs: a token for a test Yandex account, never one that matters (cloud_api:disk.read, disk.write, disk.info)
 set -euo pipefail
 root=$(cd -- "$(dirname -- "$0")/.." && pwd)
@@ -99,7 +100,51 @@ node -e '
   "$work/probe-1.json" "$work/probe-2.json" "$work/rev-1.json" "$work/rev-2.json" "$work/del-wrong.json" \
   "$work/after-wrong.json" "$work/probe.txt"
 "${cli[@]}" live files delete "/ydisk-live/probe-$stamp.txt" --yes --json >/dev/null
+# A two-way mirror of a fresh folder under /ydisk-live: sync up, edit on the Disk, sync down, delete on each side, and
+# find each deletion in the other side's trash.
+mirror="/ydisk-live/mirror-$stamp"
+mkdir -p "$work/mirror"
+echo "mirror a $stamp" >"$work/mirror/a.txt"
+echo "mirror b $stamp" >"$work/mirror/b.txt"
+"${cli[@]}" live files create "$mirror" --json >/dev/null
+# A failed run leaves no mirror folder behind: it goes to the trash like the rest.
+trap '"${cli[@]}" live files delete "$mirror" --yes --json >/dev/null 2>&1 || true
+  "${cli[@]}" live session end --json >/dev/null 2>&1 || true; rm -rf "$work"' EXIT
+"${cli[@]}" live mirrors add "$mirror" "$work/mirror" --json >"$work/m-add.json"
+id=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).item.id)' "$work/m-add.json")
+"${cli[@]}" live mirrors sync "$id" --json >"$work/m-up.json"
+echo "edited on the disk $stamp" >"$work/edit.txt"
+"${cli[@]}" live files upload "$work/edit.txt" --folder "$mirror" --name a.txt --replace --yes --json >/dev/null
+"${cli[@]}" live mirrors sync "$id" --yes --json >"$work/m-down.json"
+grep -q "edited on the disk $stamp" "$work/mirror/a.txt"
+"${cli[@]}" live mirrors versions list "$id" a.txt --json >"$work/m-versions.json"
+rm "$work/mirror/b.txt"
+"${cli[@]}" live files delete "$mirror/a.txt" --yes --json >/dev/null
+"${cli[@]}" live mirrors sync "$id" --yes --json >"$work/m-delete.json"
+# Every page of the trash: the docs name no sort by deletion time, so a first page alone misses b.txt in a full trash.
+raw trash-resources-list --path "trash:/" --limit 1000 --all >"$work/m-trash.json"
+node -e '
+  const fs = require("fs")
+  const read = (f) => JSON.parse(fs.readFileSync(f, "utf8"))
+  const [up, down, versions, deleted] = process.argv.slice(1, 5).map(read)
+  const [trash, mirror, root] = [fs.readFileSync(process.argv[5], "utf8"), process.argv[6], process.argv[7]]
+  const fail = (message) => { throw new Error(message) }
+  const one = (body) => body.items[0]
+  if (one(up).uploaded.sort().join() !== "a.txt,b.txt") fail("the first sync did not upload a.txt and b.txt")
+  if (one(down).downloaded.join() !== "a.txt") fail("the sync did not bring down the file edited on the Disk")
+  if (!versions.items.some((event) => event.event === "changed" && event.available))
+    fail("the version the sync replaced is not kept")
+  const trashed = one(deleted).trashed.map((item) => `${item.side}:${item.path}`).sort().join()
+  if (trashed !== "local:a.txt,remote:b.txt") fail(`the deletions did not cross sides: ${trashed}`)
+  if (!trash.includes(`${mirror.slice(1)}/b.txt`)) fail("b.txt deleted here is not in the Disk trash")
+  if (!fs.readdirSync(`${root}/.wirecat-trash`, { recursive: true }).some((name) => String(name).endsWith("a.txt")))
+    fail("a.txt deleted on the Disk is not in the local trash")' \
+  "$work/m-up.json" "$work/m-down.json" "$work/m-versions.json" "$work/m-delete.json" "$work/m-trash.json" \
+  "$mirror" "$work/mirror"
+"${cli[@]}" live mirrors remove "$id" --json >/dev/null
+"${cli[@]}" live files delete "$mirror" --yes --json >/dev/null
+trap '"${cli[@]}" live session end --json >/dev/null 2>&1 || true; rm -rf "$work"' EXIT
 "${cli[@]}" live doctor --json >/dev/null
 
 "${cli[@]}" live session end --json >/dev/null
-echo "live check passed: describe format 2, sign-in, files list, folders browse, download, upload, move and delete, the sync facts, sync, search, doctor, sign-out"
+echo "live check passed: describe format 2, sign-in, files list, folders browse, download, upload, move and delete, the sync facts, sync, search, a two-way mirror, doctor, sign-out"
