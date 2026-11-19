@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -449,4 +450,28 @@ it("never lists or brings down a Disk .git or node_modules folder", async () => 
   expect(first.result.downloaded).toEqual(["a.txt"])
   expect(existsSync(join(root, ".git"))).toBe(false)
   expect(disk.calls.some((call) => call.url.searchParams.get("path")?.includes("node_modules"))).toBe(false)
+})
+
+it("a file deleted here is trashed on the Disk by its md5, with no download, and its version is in the Disk trash", async () => {
+  const { cli, root, disk } = setup({ "gone.txt": "g1", "keep.txt": "k" })
+  const id = await added(cli, root)
+  await synced(cli, id)
+  rmSync(join(root, "gone.txt"))
+  disk.calls.length = 0
+  const ran = await synced(cli, id)
+  expect(ran.code, ran.err).toBe(0)
+  expect(ran.result.trashed).toEqual([{ path: "gone.txt", side: "remote" }])
+  expect(disk.trash.get("disk:/Notes/gone.txt")?.text).toBe("g1")
+  const asked = (pathname: string) =>
+    disk.calls.filter(
+      (call) => call.url.pathname === pathname && call.url.searchParams.get("path")?.endsWith("gone.txt"),
+    )
+  expect(asked("/v1/disk/resources/download")).toEqual([])
+  expect(
+    asked("/v1/disk/resources")
+      .find((call) => call.method === "DELETE")
+      ?.url.searchParams.get("md5"),
+  ).toBe(createHash("md5").update("g1").digest("hex"))
+  const events = (await cli(["versions", "list", id, "gone.txt"])).json().items as { event: string }[]
+  expect(events.at(-1)).toMatchObject({ event: "deleted", from: "remote", old_in: "remote-trash", available: false })
 })
