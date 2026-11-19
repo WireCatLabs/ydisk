@@ -8,7 +8,7 @@
 - **A sync checks free space first.** It stops with `mirror.no-space` when its downloads and the versions it keeps
   would leave too little free: a tenth of what it writes, at least 100 MB and at most 1 GB.
 
-### Changed
+### Changed — may break callers
 
 - **Many changes at once always wait for your approval.** A sync stops before more than 10 deletions or more than 50
   replacements of existing files, however big the mirror (40 deletions out of 1,000 files used to pass). The error
