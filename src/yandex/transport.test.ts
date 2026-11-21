@@ -1,3 +1,4 @@
+import { setTimeout as sleep } from "node:timers/promises"
 import { linkFetch } from "@wirecat/cli-core/cli"
 import type { Pacer } from "@wirecat/cli-core/sends"
 import * as v from "valibot"
@@ -133,4 +134,14 @@ it("waits its turn under the profile's pace, and ends the run instead of a long 
   expect(waits).toEqual([500])
   await expect(paced(1_000 + 120_000)).rejects.toMatchObject({ code: "rate_limited" })
   expect(service.calls).toHaveLength(2)
+})
+
+it("a request may take longer than the transport's limit, and its own stop cancels it alone", async () => {
+  const api = transport({ token: FAKE_TOKEN, fetch: silent, timeoutMs: 5 })
+  const stop = new AbortController()
+  const slow = api.send({ method: "GET", path: "disk/resources", timeoutMs: 60_000, signal: stop.signal }, anything)
+  await sleep(20)
+  stop.abort()
+  await expect(slow).rejects.toMatchObject({ code: "cancelled" })
+  await expect(api.send({ method: "GET", path: "disk/resources" }, anything)).rejects.toMatchObject({ code: "timeout" })
 })

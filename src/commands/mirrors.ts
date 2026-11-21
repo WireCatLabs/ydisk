@@ -1,8 +1,9 @@
 import { readFileSync, realpathSync, rmSync, statSync } from "node:fs"
 import { homedir } from "node:os"
-import { isAbsolute, join, relative, resolve, sep } from "node:path"
+import { isAbsolute, join, parse, relative, resolve, sep } from "node:path"
 import { CliError, isCliError, resolvePaths } from "@wirecat/cli-base"
 import { annotate } from "@wirecat/cli-base/commands"
+import { deadlineMargin } from "@wirecat/cli-core/background"
 import {
   commandPath,
   FETCH,
@@ -23,6 +24,7 @@ import {
 import {
   exclusionPattern,
   type FileMirrorSyncOptions,
+  type FileTarget,
   fileMirrorStatus,
   fileRemoteChanges,
   fileSyncState,
@@ -133,7 +135,12 @@ const errorOf = (error: unknown) =>
  * put on the Disk also checks `files.upload`; a file replaced or moved to a trash, on either side, `files.delete`, as
  * `files upload --replace` does. One question per set of keys, however many files.
  */
-const engineOf = (command: Command, disk: Disk, chosen: SavedMirror[]) => {
+const engineOf = (
+  command: Command,
+  disk: Disk,
+  chosen: SavedMirror[],
+  signal = contextOf(command).environment.signal,
+) => {
   const home = mirrorsHome(command)
   const key = commandPath(command).replaceAll(" ", ".")
   const guards = new Map<string, KeyedGuard>()
@@ -160,7 +167,6 @@ const engineOf = (command: Command, disk: Disk, chosen: SavedMirror[]) => {
     keyed.refuse(request)
     return guardedWrite(keyed, request, act)
   }
-  const { environment } = contextOf(command)
   return {
     target: disk.target,
     principal: accountOf(chosen),
@@ -172,8 +178,133 @@ const engineOf = (command: Command, disk: Disk, chosen: SavedMirror[]) => {
     stateOf: (mirror: Mirror) => home.stateOf(mirror as SavedMirror),
     versionsOf: home.versionsOf,
     remote: REMOTE,
-    ...(environment.signal ? { signal: environment.signal } : {}),
+    ...(signal ? { signal } : {}),
   } satisfies Omit<FileMirrorSyncOptions, "mirrors">
+}
+
+/**
+ * Fires a margin before the run's deadline (cli-core's, at most half the run), so a sync stops on its own between
+ * steps, saves and answers instead of being cut with nothing said.
+ */
+const beforeDeadline = (command: Command) => {
+  const { environment } = contextOf(command)
+  const deadline = environment.deadline?.()
+  const soon = new AbortController()
+  const timer =
+    deadline &&
+    setTimeout(
+      () => soon.abort(),
+      Math.max(0, deadline.endsAt - Math.min(deadlineMargin(deadline), deadline.ms / 2) - Date.now()),
+    )
+  timer?.unref()
+  return {
+    signal: environment.signal ? AbortSignal.any([environment.signal, soon.signal]) : soon.signal,
+    deadline,
+    clear: () => clearTimeout(timer),
+  }
+}
+
+interface Listed {
+  files: number
+  complete: boolean
+}
+
+/** The target with each listing's size kept by Disk folder, so the answer says how far it got. */
+const recorded = (target: FileTarget) => {
+  const listings = new Map<string, Listed>()
+  const list: FileTarget["list"] = async (folder, signal, options) => {
+    const listing = await target.list(folder, signal, options)
+    if (listing) listings.set(folder, { files: listing.files.length, complete: listing.complete })
+    return listing
+  }
+  return { listings, target: { ...target, list } }
+}
+
+type Synced = Awaited<ReturnType<typeof syncFileMirrors>>["items"][number]
+type Reported = (Synced & { listed?: Listed; unlisted?: number }) | { id: string; path: string; stopped: true }
+
+/**
+ * Each mirror in turn until the deadline is near; one left for then is answered as stopped, since the engine refuses
+ * to start once the signal has fired. The Disk files a stopped listing did not reach are counted, not listed: a big
+ * Disk's would pass the output's limit, none of them is deleted, and the next sync lists them.
+ */
+const syncEach = async (
+  command: Command,
+  disk: Disk,
+  chosen: SavedMirror[],
+  options: Partial<FileMirrorSyncOptions>,
+  stop: AbortSignal,
+) => {
+  const { listings, target } = recorded(disk.target)
+  const engine = { ...engineOf(command, disk, chosen, stop), target }
+  const items: Reported[] = []
+  const issues: Awaited<ReturnType<typeof syncFileMirrors>>["issues"] = []
+  // One lock for the run, as one call for every mirror takes it, so no watch syncs between two mirrors.
+  const held = await engine.lock()
+  const lock = async () => ({ held: () => held.held(), release: () => {} })
+  try {
+    for (const mirror of chosen) {
+      if (stop.aborted) {
+        items.push({ id: mirror.id, path: mirror.path, stopped: true })
+        continue
+      }
+      const one = await syncFileMirrors({ ...engine, ...options, lock, mirrors: [mirror] })
+      const listed = listings.get(mirror.folder)
+      for (const item of one.items) {
+        const cut = item.stopped === true || (listed?.complete === false && stop.aborted)
+        const unreached = cut && listed?.complete === false
+        const unknown = unreached ? item.unknown.filter((file) => file.side !== "remote") : item.unknown
+        if (item.errors.length || item.conflicts.length || unknown.length)
+          for (const issue of one.issues) issues.push(issue)
+        items.push({
+          ...item,
+          unknown,
+          ...(listed ? { listed } : {}),
+          ...(cut ? { stopped: true as const } : {}),
+          ...(unreached ? { unlisted: item.unknown.length - unknown.length } : {}),
+        })
+      }
+    }
+  } finally {
+    await held.release()
+  }
+  return { items, issues }
+}
+
+const moved = (item: Reported) =>
+  "uploaded" in item &&
+  [item.uploaded, item.downloaded, item.trashed, item.renamed, item.adopted].some((done) => done.length)
+
+/**
+ * What a stopped run offers: the same run again when it moved, since it goes on from where it stopped; when only the
+ * listing fit, a longer run, as the same deadline would list the same files again.
+ */
+const resumeOf = (
+  command: Command,
+  name: "sync" | "preview",
+  items: Reported[],
+  deadline: { ms: number } | undefined,
+  id?: string,
+) => {
+  const stopped = items.filter((item) => item.stopped)
+  if (!stopped.length) return []
+  const only = stopped.length === 1 ? stopped[0]?.id : id
+  const timeout = command.optsWithGlobals<{ timeout?: string }>().timeout
+  const ms = deadline?.ms ?? 0
+  const longer = ms < 15 * 60_000 ? "15m" : `${Math.ceil((ms * 2) / 3_600_000)}h`
+  const again = name === "sync" && items.some(moved)
+  return [
+    {
+      kind: "command" as const,
+      step: again ? "mirrors.sync" : `mirrors.${name}.longer`,
+      command: `mirrors ${name}`,
+      args: { ...(only ? { id: only } : {}), ...(again ? (timeout ? { timeout } : {}) : { timeout: longer }) },
+      why: again
+        ? "the sync stopped before its deadline and kept what it did; running it again goes on from there"
+        : `listing the ${SERVICE} took the whole run; give it more time, in a terminal`,
+      safe_to_auto_execute: false,
+    },
+  ]
 }
 
 const output = (command: Command, body: Parameters<typeof renderAnswer>[2]) =>
@@ -216,7 +347,9 @@ const refuseSensitive = (root: string, env: NodeJS.ProcessEnv) => {
     return way === "" || (!way.startsWith("..") && !isAbsolute(way))
   }
   // The home folder, or one holding it, is never a mirror, even with the CLI's folders moved out of it.
-  if (own.some(holds) || holds(realOf(env.HOME ?? homedir())) || refusedPlace(root, IDENTITY, env))
+  // On Windows a drive root other than the home's drive holds none of the folders above, yet is a whole disk.
+  const driveRoot = real === parse(real).root
+  if (driveRoot || own.some(holds) || holds(realOf(env.HOME ?? homedir())) || refusedPlace(root, IDENTITY, env))
     throw new CliError(
       "validation_error",
       `${root} is not mirrored: the home folder, credential folders, the WireCat apps' folders and a folder holding ` +
@@ -430,6 +563,8 @@ const previewCommand = () =>
   annotate(new Command("preview"), {
     effects: REMOTE_READ,
     offline: false,
+    // Listing a whole Disk can take minutes: it stops before its deadline (5 min, 45 s over MCP) and says so.
+    cooperative: true,
     examples: [`${CLI} personal mirrors preview --json`, `${CLI} personal mirrors preview 1a2b3c4d --keep ${REMOTE}`],
   })
     .summary("list the Disk and show what mirrors sync would do")
@@ -442,29 +577,54 @@ const previewCommand = () =>
     .action(async function (this: Command, id: string | undefined, args: { keep?: "local" | "disk" | "both" }) {
       const chosen = mirrorsHome(this).chosen(id)
       const keep = keepOf(args.keep)
-      const { items } = await withDisk(this, (disk) =>
-        syncFileMirrors({ ...engineOf(this, disk, chosen), mirrors: chosen, dryRun: true, ...(keep ? { keep } : {}) }),
+      const token = tokenOf(this)
+      const soon = beforeDeadline(this)
+      const { items } = await contextOf(this)
+        .run((events) =>
+          syncEach(
+            this,
+            diskFor(this, events, token),
+            chosen,
+            { dryRun: true, ...(keep ? { keep } : {}) },
+            soon.signal,
+          ),
+        )
+        .finally(soon.clear)
+      const body = allOf(
+        "mirrors preview",
+        items.map((item) => snakeKeys(item)),
       )
-      output(
-        this,
-        allOf(
-          "mirrors preview",
-          items.map((item) => snakeKeys(item)),
-        ),
-      )
+      const stopped = items.filter((item) => item.stopped)
+      // Not a resumable command: a plan cut short is no plan, so it exits with the issue's code.
+      if (stopped.length) {
+        body.meta = {
+          complete: false,
+          issues: stopped.map((item) => ({
+            code: "timeout" as const,
+            reason: "mirror.stopped",
+            source: `mirror ${item.id}`,
+          })),
+        }
+        body.next = resumeOf(this, "preview", items, soon.deadline, id)
+      }
+      output(this, body)
     })
 
 const syncCommand = () =>
   annotate(new Command("sync"), {
     effects: REMOTE_WRITE,
     offline: false,
+    // A whole Disk's first sync takes hours: each run stops before its deadline (15 min, 45 s over MCP), keeps what
+    // it did and answers partial, and the next goes on from there.
+    cooperative: true,
+    partial: true,
     examples: [`${CLI} personal mirrors sync`, `${CLI} personal mirrors sync 1a2b3c4d --keep ${REMOTE}`],
   })
     .summary("sync mirrors both ways once")
     .description(
       "sync mirrors both ways once: a change on one side is copied to the other, a deletion goes to the other " +
         "side's trash, and a file changed on both sides is reported and left for --keep; mirrors preview shows " +
-        "the plan first",
+        "the plan first. A run stops before its deadline, keeps what it did, and the next sync goes on from there",
     )
     .argument("[id]", `${ID}; every mirror of the profile when omitted`)
     .addOption(keepOption())
@@ -515,23 +675,34 @@ const syncCommand = () =>
       const allowReplacements = args.replace ? Number.POSITIVE_INFINITY : undefined
       const keep = keepOf(args.keep)
       const token = tokenOf(this)
-      const { items, issues } = await contextOf(this).run((events) =>
-        syncFileMirrors({
-          ...engineOf(this, diskFor(this, events, token), chosen),
-          mirrors: chosen,
-          ...(keep ? { keep } : {}),
-          ...(allowDeletions ? { allowDeletions } : {}),
-          ...(allowReplacements ? { allowReplacements } : {}),
-          ...(args.repin ? { repin: true } : {}),
-        }),
-      )
+      const soon = beforeDeadline(this)
+      const { items, issues } = await contextOf(this)
+        .run((events) =>
+          syncEach(
+            this,
+            diskFor(this, events, token),
+            chosen,
+            {
+              ...(keep ? { keep } : {}),
+              ...(allowDeletions ? { allowDeletions } : {}),
+              ...(allowReplacements ? { allowReplacements } : {}),
+              ...(args.repin ? { repin: true } : {}),
+            },
+            soon.signal,
+          ),
+        )
+        .finally(soon.clear)
       const body = allOf(
         "mirrors sync",
         items.map((item) => snakeKeys(item)),
       )
-      if (issues.length) body.meta = { ...body.meta, complete: false, issues }
+      const stopped = items.some((item) => item.stopped)
+      if (issues.length || stopped) body.meta = { ...body.meta, complete: false, ...(issues.length ? { issues } : {}) }
+      if (stopped) body.next = resumeOf(this, "sync", items, soon.deadline, id)
       output(this, body)
-      const stop = items.flatMap((item) => item.errors).find((error) => error.reason && STOPS.has(error.reason))
+      const stop = items
+        .flatMap((item) => ("errors" in item ? item.errors : []))
+        .find((error) => error.reason && STOPS.has(error.reason))
       if (stop)
         throw new CliError(stop.code === "confirmation_required" ? stop.code : "validation_error", stop.message, {
           reason: stop.reason,

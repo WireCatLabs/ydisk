@@ -43,7 +43,9 @@ which answers its text. `folders add <path>` changes what the owner's sync copie
 The owner may mirror a local folder with a Disk folder. `mirrors list` shows the pairs, `mirrors status` what the next
 sync would send, and `mirrors preview <id> --json` the plan without changing anything. `mirrors sync <id>`
 copies changes both ways; a file changed on both sides comes back under `conflicts` and stays as it is: ask the owner
-which side to keep, then run `mirrors sync <id> --keep local|disk|both`. Adding or removing a mirror is the owner's.
+which side to keep, then run `mirrors sync <id> --keep local|disk|both`. A sync stops before 45 s with
+`meta.complete: false` and `stopped: true`; follow its `next`. When `next` asks for a longer `--timeout`, the listing
+does not fit an agent's run: ask the owner to run it in a terminal. Adding or removing a mirror is the owner's.
 
 ## Rules
 
