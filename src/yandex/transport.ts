@@ -19,6 +19,10 @@ export interface Request {
   ids?: Record<string, string>
   query?: Record<string, string | number | undefined>
   body?: Record<string, unknown>
+  /** Stops this request alone: a listing that must end before the run's deadline, while the run goes on. */
+  signal?: AbortSignal
+  /** How long this request may take instead of the transport's own limit. */
+  timeoutMs?: number
 }
 
 export interface TransportOptions {
@@ -97,13 +101,13 @@ export const transport = (options: TransportOptions) => {
     await sleep(wait, options.signal, "retry")
   }
 
-  const unanswered = (writes: boolean, error: unknown): CliError => {
+  const unanswered = (writes: boolean, error: unknown, stop?: AbortSignal): CliError => {
     // Before the stop check: a write stopped in flight may still have landed (WC-LIFE-9).
     if (writes)
       return new CliError("outcome_unknown", `${SERVICE} did not answer a write; check it before repeating the write`, {
         retryable: false,
       })
-    if (options.signal?.aborted) return new CliError("cancelled", `the ${SERVICE} request was stopped`)
+    if (options.signal?.aborted || stop?.aborted) return new CliError("cancelled", `the ${SERVICE} request was stopped`)
     const timedOut = error instanceof Error && error.name === "TimeoutError"
     return timedOut
       ? new CliError("timeout", `${SERVICE} did not answer in time`, { retryable: true })
@@ -118,10 +122,12 @@ export const transport = (options: TransportOptions) => {
     const deadline = new AbortController()
     const timer = setTimeout(
       () => deadline.abort(new DOMException("timed out", "TimeoutError")),
-      options.timeoutMs ?? TIMEOUT_MS,
+      request.timeoutMs ?? options.timeoutMs ?? TIMEOUT_MS,
     )
     timer.unref()
-    const signal = options.signal ? AbortSignal.any([options.signal, deadline.signal]) : deadline.signal
+    const signal = AbortSignal.any(
+      [options.signal, request.signal, deadline.signal].filter((one): one is AbortSignal => one !== undefined),
+    )
     const end = providerRequest(`${request.method} /${request.path}`, options.events, {
       method: request.method,
       transport: "http",
@@ -143,7 +149,7 @@ export const transport = (options: TransportOptions) => {
           signal,
         })
       } catch (error) {
-        const failure = unanswered(writes, deadline.signal.reason ?? error)
+        const failure = unanswered(writes, deadline.signal.reason ?? error, request.signal)
         end({ errorCode: failure.code })
         throw failure
       }

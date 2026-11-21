@@ -2,8 +2,11 @@ import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { setTimeout as sleep } from "node:timers/promises"
+import { metaOf } from "@wirecat/cli-base/commands"
+import type { Command } from "commander"
 import { expect, it } from "vitest"
-import { run } from "./program.js"
+import { definition, run } from "./program.js"
 import { type FakeDisk, fakeDisk } from "./testing/fake-disk.js"
 import { runCli, signedIn } from "./testing/harness.js"
 
@@ -605,4 +608,115 @@ it("a file deleted here is trashed on the Disk by its md5, with no download, and
   ).toBe(createHash("md5").update("g1").digest("hex"))
   const events = (await cli(["versions", "list", id, "gone.txt"])).json().items as { event: string }[]
   expect(events.at(-1)).toMatchObject({ event: "deleted", from: "remote", old_in: "remote-trash", available: false })
+})
+
+/** The Disk with its flat listing stuck from `offset` on until the request is stopped, slower than any deadline. */
+const stuckFrom = (disk: FakeDisk, offset: number) => ({
+  fetch: (input: string | URL | Request, init?: RequestInit) => {
+    const url = new URL(input instanceof Request ? input.url : String(input))
+    if (url.pathname !== "/v1/disk/resources/files" || Number(url.searchParams.get("offset")) < offset)
+      return disk.fetch(input, init)
+    return new Promise<Response>((_, reject) =>
+      init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), { once: true }),
+    )
+  },
+})
+
+it("a sync stops before its deadline when the Disk listing is slow, says how far it got and deletes nothing", async () => {
+  const { cli, dir, disk, env, root: notes } = setup({ "plan.md": "p" })
+  disk.put("disk:/Docs/a.txt", "a")
+  disk.put("disk:/Docs/gone.txt", "g")
+  const root = join(dir, "YandexDisk")
+  mkdirSync(root)
+  const whole = ((await cli(["add", "/", root])).json().item as { id: string }).id
+  const folder = await added(cli, notes)
+  expect((await synced(cli)).code).toBe(0)
+  disk.remove("disk:/Docs/gone.txt")
+  disk.filesPageCap = 1
+  const ran = await runCli(["personal", "mirrors", "sync", "--yes", "--json", "--timeout", "10s"], {
+    service: stuckFrom(disk, 1),
+    env,
+  })
+  expect(ran.code, ran.err).toBe(0)
+  const body = ran.json()
+  expect(body).toMatchObject({ meta: { complete: false } })
+  expect(body.next).toEqual([
+    expect.objectContaining({ command: "mirrors sync", args: { timeout: "15m" }, safe_to_auto_execute: false }),
+  ])
+  expect(body.items).toEqual([
+    expect.objectContaining({ id: whole, stopped: true, listed: { files: 1, complete: false }, unlisted: 2 }),
+    { id: folder, path: notes, stopped: true },
+  ])
+  expect((body.items as Synced[])[0]).toMatchObject({ trashed: [], unknown: [], downloaded: [] })
+  expect(read(root, "Docs/gone.txt")).toBe("g")
+  expect(localTrash(root)).toEqual([])
+  const after = await synced(cli)
+  expect(after.result).toMatchObject({ id: whole, trashed: [{ path: "Docs/gone.txt", side: "local" }] })
+})
+
+it("sync gets a sync's deadline and preview a cooperative one, not a one-shot's 30 s", () => {
+  const mirrors = definition()
+    .commands()
+    .find((one) => one.name() === "mirrors") as Command
+  const meta = (name: string) => metaOf(mirrors.commands.find((one) => one.name() === name) as Command)
+  expect(meta("sync")).toMatchObject({ cooperative: true, partial: true })
+  expect(meta("preview")).toMatchObject({ cooperative: true })
+  expect(meta("preview").partial).toBeUndefined()
+})
+
+/** The Disk with one file's download taking `ms`, as a big file's would. */
+const slowDownload = (disk: FakeDisk, path: string, ms: number) => ({
+  fetch: async (input: string | URL | Request, init?: RequestInit) => {
+    const url = new URL(input instanceof Request ? input.url : String(input))
+    if (url.pathname === "/disk/fake" && url.searchParams.get("path") === path) await sleep(ms)
+    return disk.fetch(input, init)
+  },
+})
+
+it("a sync stopped between files keeps what it did, and the next sync goes on from there", async () => {
+  const { cli, disk, env, root } = setup({ "a.txt": "a", "b.txt": "b", "c.txt": "c" })
+  const id = await added(cli, root)
+  const ran = await runCli(["personal", "mirrors", "sync", id, "--yes", "--json", "--timeout", "10s"], {
+    service: slowDownload(disk, "disk:/Notes/b.txt", 6_000),
+    env,
+  })
+  expect(ran.code, ran.err).toBe(0)
+  const body = ran.json()
+  expect(body.items).toEqual([
+    expect.objectContaining({
+      id,
+      stopped: true,
+      downloaded: ["a.txt", "b.txt"],
+      listed: { files: 3, complete: true },
+    }),
+  ])
+  expect(body.next).toEqual([
+    expect.objectContaining({ step: "mirrors.sync", args: { id, timeout: "10s" }, safe_to_auto_execute: false }),
+  ])
+  const rest = await synced(cli, id)
+  expect(rest.code, rest.err).toBe(0)
+  expect(rest.result).toMatchObject({ downloaded: ["c.txt"], unchanged: 2 })
+  expect(rest.json().next).toBeUndefined()
+})
+
+it("a preview stops before its deadline when the Disk listing is slow, and fails as a cut plan", async () => {
+  const { cli, dir, disk, env } = setup({ "plan.md": "p" })
+  const root = join(dir, "YandexDisk")
+  mkdirSync(root)
+  const whole = ((await cli(["add", "/", root])).json().item as { id: string }).id
+  const ran = await runCli(["personal", "mirrors", "preview", whole, "--json", "--timeout", "10s"], {
+    service: stuckFrom(disk, 0),
+    env,
+  })
+  expect(ran.code).not.toBe(0)
+  const body = ran.json()
+  expect(body).toMatchObject({
+    meta: { complete: false, issues: [{ code: "timeout", reason: "mirror.stopped", source: `mirror ${whole}` }] },
+  })
+  expect(body.items).toEqual([
+    expect.objectContaining({ id: whole, stopped: true, listed: { files: 0, complete: false }, plan: [] }),
+  ])
+  expect(body.next).toEqual([
+    expect.objectContaining({ step: "mirrors.preview.longer", args: { id: whole, timeout: "15m" } }),
+  ])
 })

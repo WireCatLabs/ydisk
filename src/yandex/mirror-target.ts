@@ -49,6 +49,11 @@ export const MAX_MIRROR_FILES = 100_000
  * reference/all-files), so the offset moves by what a page returned and only an empty page ends the listing.
  */
 const FLAT_PAGE = 1_000
+/**
+ * A page of the flat listing may take this long: one of 1,000 took Yandex more than 30 s on 2026-11-21. The run's
+ * stop before its deadline still ends it.
+ */
+const FLAT_PAGE_MS = 120_000
 const ROOT = "disk:/"
 
 const statusOf = (error: unknown) => (isCliError(error) ? error.details?.status : undefined)
@@ -105,7 +110,10 @@ export const diskTarget = (api: Transport, links: FetchLike, signal?: AbortSigna
   const revisionOf = async () =>
     (await api.send({ method: "GET", path: "disk", query: { fields: "revision" } }, Revision)).revision
 
-  /** A failed page leaves the listing incomplete; a refused token, a stop or the rate limit ends the sync. */
+  /**
+   * A failed page leaves the listing incomplete; a refused token or the rate limit ends the sync. A stop (`stop`, the
+   * engine's signal, which fires before the run's deadline) ends the listing incomplete, so it proves no deletion.
+   */
   const fatal = (error: unknown) =>
     !isCliError(error) || ["authentication_error", "cancelled", "rate_limited"].includes(error.code)
 
@@ -113,7 +121,7 @@ export const diskTarget = (api: Transport, links: FetchLike, signal?: AbortSigna
    * Every file under `top`, by offset pages: an entry that moves while the pages are read can be missed, so the
    * engine checks each file missing from it by its path before it deletes anything.
    */
-  const walk = async (top: Resource, excluded: (path: string) => boolean) => {
+  const walk = async (top: Resource, excluded: (path: string) => boolean, stop?: AbortSignal) => {
     const prefix = prefixOf(top.path)
     const files: RemoteFile[] = []
     let counted = 0
@@ -121,13 +129,20 @@ export const diskTarget = (api: Transport, links: FetchLike, signal?: AbortSigna
     while (folders.length) {
       const folder = folders.shift() as string
       for (let offset = 0; ; offset += PAGE) {
+        if (stop?.aborted) return { files, complete: false }
         let answer: v.InferOutput<typeof Listing>
         try {
           answer = await api.send(
-            { method: "GET", path: "disk/resources", query: { path: folder, limit: PAGE, offset, sort: "name" } },
+            {
+              method: "GET",
+              path: "disk/resources",
+              query: { path: folder, limit: PAGE, offset, sort: "name" },
+              ...(stop ? { signal: stop } : {}),
+            },
             Listing,
           )
         } catch (error) {
+          if (stop?.aborted) return { files, complete: false }
           if (fatal(error)) throw error
           return { files, complete: false }
         }
@@ -152,16 +167,24 @@ export const diskTarget = (api: Transport, links: FetchLike, signal?: AbortSigna
    * Every file on the Disk from its flat, alphabetical listing: one request per thousand files instead of one per
    * folder. A file met twice, as a page shifts while the Disk changes, is kept once.
    */
-  const flat = async (excluded: (path: string) => boolean) => {
+  const flat = async (excluded: (path: string) => boolean, stop?: AbortSignal) => {
     const found = new Map<string, RemoteFile>()
     let counted = 0
     const listing = (complete: boolean) => ({ files: [...found.values()], complete })
     for (let offset = 0; ; ) {
+      if (stop?.aborted) return listing(false)
       let items: Resource[]
       try {
-        const page = { method: "GET" as const, path: "disk/resources/files", query: { limit: FLAT_PAGE, offset } }
+        const page = {
+          method: "GET" as const,
+          path: "disk/resources/files",
+          query: { limit: FLAT_PAGE, offset },
+          timeoutMs: FLAT_PAGE_MS,
+          ...(stop ? { signal: stop } : {}),
+        }
         items = (await api.send(page, FlatList)).items
       } catch (error) {
+        if (stop?.aborted) return listing(false)
         if (fatal(error)) throw error
         return listing(false)
       }
@@ -210,7 +233,7 @@ export const diskTarget = (api: Transport, links: FetchLike, signal?: AbortSigna
   return {
     identity: async () => (await api.send({ method: "GET", path: "disk", query: { fields: "user" } }, User)).user.uid,
 
-    list: async (root, _signal, options) => {
+    list: async (root, stop, options) => {
       const top = await read(root)
       if (!top) return undefined
       if (top.type !== "dir")
@@ -218,7 +241,7 @@ export const diskTarget = (api: Transport, links: FetchLike, signal?: AbortSigna
           reason: "mirror.not-folder",
         })
       const excluded = options?.excluded ?? (() => false)
-      const listed = top.path === ROOT ? await flat(excluded) : await walk(top, excluded)
+      const listed = top.path === ROOT ? await flat(excluded, stop) : await walk(top, excluded, stop)
       return { rootId: top.resource_id, ...listed }
     },
 

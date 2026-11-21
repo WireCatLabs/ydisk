@@ -1264,7 +1264,7 @@ ydisk mirrors preview [id] [options]
 
 ### `ydisk mirrors sync`
 
-sync mirrors both ways once: a change on one side is copied to the other, a deletion goes to the other side's trash, and a file changed on both sides is reported and left for --keep; mirrors preview shows the plan first
+sync mirrors both ways once: a change on one side is copied to the other, a deletion goes to the other side's trash, and a file changed on both sides is reported and left for --keep; mirrors preview shows the plan first. A run stops before its deadline, keeps what it did, and the next sync goes on from there
 
 **Changes something in the service.**
 

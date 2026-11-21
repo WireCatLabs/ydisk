@@ -106,8 +106,9 @@ node -e '
   "$work/probe-1.json" "$work/probe-2.json" "$work/rev-1.json" "$work/rev-2.json" "$work/del-wrong.json" \
   "$work/after-wrong.json" "$work/probe.txt"
 # The flat listing a whole-Disk mirror reads (GET /v1/disk/resources/files): Yandex's docs show neither sha256 nor
-# resource_id on its items and name no largest page, so both are checked here, with limit and offset.
-raw resources-files-list --limit 1000 >"$work/flat-all.json"
+# resource_id on its items and name no largest page, so both are checked here, with limit and offset. A page of 1,000
+# did not come back within 30 s on 2026-11-21, and 100 files show the same fields.
+raw resources-files-list --limit 100 >"$work/flat-all.json"
 raw resources-files-list --limit 1 --offset 1 >"$work/flat-one.json"
 node -e '
   const fs = require("fs")

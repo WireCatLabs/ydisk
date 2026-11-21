@@ -64,6 +64,12 @@ works like any other mirror: everything on this page holds for it. Two things ma
   writes, at least 100 MB and at most 1 GB), and says how much it needs. Leave big folders out to fit. The earlier
   versions stay for 30 days.
 - **Size.** A mirror holds up to 100,000 files, not counting the ones you leave out.
+- **Time.** One sync runs up to 15 minutes in a terminal and 45 seconds when an agent runs it. It stops before that on
+  its own, keeps what it did, and says how far it got: each mirror's `listed` shows how many Disk files it listed and
+  whether the listing was complete. Run `mirrors sync` again to go on. A first sync of a big Disk takes several runs.
+  When the listing alone fills the run, nothing is synced and the answer suggests a longer `--timeout`, such as
+  `ydisk personal mirrors sync --timeout 1h`. A listing cut short deletes nothing: the Disk files it did not reach are
+  only counted, under `unlisted`.
 
 ## Leave folders out
 
